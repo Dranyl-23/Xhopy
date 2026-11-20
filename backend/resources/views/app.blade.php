@@ -36,7 +36,31 @@
 
         @fonts
 
-        @vite(['resources/css/app.css', 'resources/js/app.ts', "resources/js/pages/{$page['component']}.vue"])
+        @php
+            $frontendRoot = str_replace('\\', '/', (string) realpath(base_path('../frontend')));
+            $componentEntry = null;
+
+            try {
+                $resolvedFile = app('inertia.view-finder')->find($page['component']);
+                $normalizedFile = str_replace('\\', '/', (string) realpath($resolvedFile));
+                if ($frontendRoot !== '' && str_starts_with($normalizedFile, $frontendRoot.'/')) {
+                    $candidate = substr($normalizedFile, strlen($frontendRoot) + 1);
+                    if (str_starts_with($candidate, 'resources/')) {
+                        $componentEntry = $candidate;
+                    }
+                }
+            } catch (\Throwable) {
+                $componentEntry = null;
+            }
+
+            $viteEntries = array_values(array_filter([
+                'resources/css/app.css',
+                'resources/js/app.ts',
+                $componentEntry,
+            ]));
+        @endphp
+
+        @vite($viteEntries)
         <x-inertia::head>
             <title>{{ config('app.name', 'XHopy') }}</title>
         </x-inertia::head>

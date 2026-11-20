@@ -1,3 +1,4 @@
+import { fileURLToPath, URL } from 'node:url';
 import inertia from '@inertiajs/vite';
 import { wayfinder } from '@laravel/vite-plugin-wayfinder';
 import tailwindcss from '@tailwindcss/vite';
@@ -7,6 +8,17 @@ import { bunny } from 'laravel-vite-plugin/fonts';
 import { defineConfig, lazyPlugins } from 'vite-plus';
 
 export default defineConfig({
+    resolve: {
+        alias: {
+            '@': fileURLToPath(new URL('./resources/js', import.meta.url)),
+            '@modules': fileURLToPath(
+                new URL('./resources/js/modules', import.meta.url),
+            ),
+            '@shared': fileURLToPath(
+                new URL('./resources/js/shared', import.meta.url),
+            ),
+        },
+    },
     plugins: lazyPlugins(() => [
         laravel({
             input: ['resources/css/app.css', 'resources/js/app.ts'],
@@ -61,7 +73,7 @@ export default defineConfig({
             'test-results/**',
             'tailwind.config.js',
             'resources/js/actions/**',
-            'resources/js/components/ui/*',
+            'resources/js/shared/components/ui/*',
             'resources/js/routes/**',
             'resources/js/wayfinder/**',
         ],
@@ -80,7 +92,7 @@ export default defineConfig({
         ignorePatterns: [
             'playwright-report/**',
             'test-results/**',
-            'resources/js/components/ui/*',
+            'resources/js/shared/components/ui/*',
         ],
         sortTailwindcss: {
             functions: ['clsx', 'cn', 'cva'],

@@ -36,19 +36,23 @@ Noly/
 │   ├── tests/                   # Pest 5 Unit, Feature, and Architecture tests
 │   ├── artisan
 │   └── composer.json
-├── frontend/                    # Vue 3 + TypeScript Frontend (Inertia 3, Tailwind v4, shadcn-vue)
+├── frontend/                    # Vue 3 + TypeScript Modular Frontend (Inertia 3, Tailwind v4, shadcn-vue)
 │   ├── e2e/                     # Playwright E2E browser tests
+│   ├── scripts/                 # Module boundary enforcement checks
 │   ├── resources/
 │   │   ├── css/app.css          # Tailwind CSS v4 & XHopy brand tokens
 │   │   └── js/
 │   │       ├── actions/         # Auto-generated Wayfinder controller actions
-│   │       ├── components/      # Reusable UI (shadcn-vue) & Storefront components
-│   │       ├── composables/
-│   │       ├── layouts/         # StorefrontLayout, AppLayout, AuthLayout
-│   │       ├── pages/           # Inertia Vue 3 pages
+│   │       ├── modules/         # Isolated domain modules (public barrels via index.ts):
+│   │       │   ├── account/     # Auth, 2FA, passkeys, profile, security, dashboard
+│   │       │   ├── admin/       # Back-office operations
+│   │       │   ├── cart/        # Cart button, drawer, and cart summary state
+│   │       │   ├── catalog/     # Product cards, pricing, rating, quantity, pagination
+│   │       │   ├── checkout/    # Checkout workflow
+│   │       │   └── storefront/  # Storefront shell, header/footer, categories, Daily Interest
+│   │       ├── shared/          # Cross-module UI primitives (shadcn-vue), layouts, composables, lib, types
 │   │       ├── routes/          # Auto-generated Wayfinder typed routes
-│   │       ├── types/           # Strict TypeScript domain contracts
-│   │       └── app.ts
+│   │       └── app.ts           # Dynamic Inertia 3 module page & layout resolver
 │   ├── package.json
 │   ├── playwright.config.ts
 │   ├── tsconfig.json

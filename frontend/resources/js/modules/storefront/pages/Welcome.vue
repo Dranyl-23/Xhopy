@@ -1,0 +1,385 @@
+<script setup lang="ts">
+import { Head, router } from '@inertiajs/vue3';
+import { ArrowRight, Eye, Layers, ShoppingBag, Sparkles } from '@lucide/vue';
+import { computed, ref } from 'vue';
+import CategoryCard from '@modules/storefront/components/CategoryCard.vue';
+import DailyInterestModule from '@modules/storefront/components/DailyInterestModule.vue';
+import EmptyState from '@shared/components/EmptyState.vue';
+import { ProductCard, type ProductSummary } from '@modules/catalog';
+import {
+    Alert,
+    AlertDescription,
+    AlertTitle,
+} from '@shared/components/ui/alert';
+import { Badge } from '@shared/components/ui/badge';
+import { Button } from '@shared/components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@shared/components/ui/dialog';
+import StorefrontLayout from '@modules/storefront/layouts/StorefrontLayout.vue';
+import { home } from '@/routes';
+import type { CartSummary } from '@modules/cart';
+import type { StorefrontHomeProps } from '@modules/storefront/types';
+
+const props = withDefaults(defineProps<StorefrontHomeProps>(), {
+    announcement: null,
+    hero: null,
+    categories: () => [],
+    topProducts: () => [],
+    dailyInterest: null,
+    cartSummary: () => ({ itemCount: 0, subtotalFormatted: null }),
+    searchQuery: '',
+    selectedCategory: null,
+    isDemoPreview: false,
+});
+
+const localCartCount = ref(props.cartSummary.itemCount);
+const cartDialogOpen = ref(false);
+const lastSelectedProduct = ref<ProductSummary | null>(null);
+
+const effectiveCart = computed<CartSummary>(() => ({
+    itemCount: localCartCount.value,
+    subtotalFormatted: props.cartSummary.subtotalFormatted,
+}));
+
+const filteredProducts = computed(() => {
+    return props.topProducts;
+});
+
+function handleSearch(query: string): void {
+    router.get(
+        home.url({
+            query: {
+                q: query || undefined,
+                category: props.selectedCategory || undefined,
+                preview_demo: props.isDemoPreview ? '1' : undefined,
+            },
+        }),
+        {},
+        { preserveState: true, preserveScroll: true },
+    );
+}
+
+function handleSelectCategory(slug: string | null): void {
+    router.get(
+        home.url({
+            query: {
+                q: props.searchQuery || undefined,
+                category: slug || undefined,
+                preview_demo: props.isDemoPreview ? '1' : undefined,
+            },
+        }),
+        {},
+        { preserveState: true, preserveScroll: true },
+    );
+}
+
+function handleAddToCart(product: ProductSummary): void {
+    localCartCount.value += 1;
+    lastSelectedProduct.value = product;
+}
+
+function clearFilters(): void {
+    router.get(
+        home.url({
+            query: {
+                preview_demo: props.isDemoPreview ? '1' : undefined,
+            },
+        }),
+    );
+}
+</script>
+
+<template>
+    <Head title="XHopy Storefront — Quality Essentials" />
+
+    <StorefrontLayout
+        :announcement="announcement"
+        :categories="categories"
+        :cart="effectiveCart"
+        :search-query="searchQuery"
+        :selected-category="selectedCategory"
+        @search="handleSearch"
+        @select-category="handleSelectCategory"
+        @open-cart="cartDialogOpen = true"
+    >
+        <div
+            class="mx-auto max-w-7xl space-y-14 px-4 py-8 sm:px-6 sm:py-10 lg:px-8"
+        >
+            <!-- Explicit Non-Production Demo Preview Indicator (Rule #4: No fabricated facts) -->
+            <Alert
+                v-if="isDemoPreview"
+                class="border-primary/40 bg-brand-subtle/60"
+            >
+                <Eye class="size-4 text-primary" aria-hidden="true" />
+                <AlertTitle class="font-semibold text-foreground">
+                    Development Demo Preview Active
+                </AlertTitle>
+                <AlertDescription
+                    class="flex flex-col justify-between gap-3 text-xs text-muted-foreground sm:flex-row sm:items-center"
+                >
+                    <span>
+                        Showing clearly labeled <strong>[DEMO]</strong> preview
+                        records to verify the Batch 2 design system. These
+                        records are never shown in production.
+                    </span>
+                    <Button
+                        as="a"
+                        :href="home.url()"
+                        variant="outline"
+                        size="sm"
+                        class="h-8 shrink-0 text-xs"
+                    >
+                        Exit Demo Preview
+                    </Button>
+                </AlertDescription>
+            </Alert>
+
+            <!-- 1. Promotional Hero Section -->
+            <section
+                v-if="hero"
+                aria-labelledby="hero-heading"
+                class="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-charcoal via-charcoal to-primary/90 p-6 text-charcoal-foreground shadow-sm sm:p-10 lg:p-14"
+            >
+                <div class="relative z-10 max-w-2xl space-y-5">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <Badge
+                            v-if="hero.badgeText"
+                            class="bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground"
+                        >
+                            {{ hero.badgeText }}
+                        </Badge>
+                        <span
+                            v-if="hero.eyebrow"
+                            class="text-xs font-semibold tracking-wider text-charcoal-foreground/80 uppercase"
+                        >
+                            {{ hero.eyebrow }}
+                        </span>
+                    </div>
+
+                    <h1
+                        id="hero-heading"
+                        class="text-3xl leading-tight font-extrabold tracking-tight sm:text-4xl lg:text-5xl"
+                    >
+                        {{ hero.title }}
+                    </h1>
+
+                    <p
+                        class="max-w-xl text-sm leading-relaxed text-charcoal-foreground/85 sm:text-base"
+                    >
+                        {{ hero.subtitle }}
+                    </p>
+
+                    <div class="flex flex-wrap items-center gap-3 pt-2">
+                        <Button
+                            as="a"
+                            :href="hero.primaryCtaHref"
+                            size="lg"
+                            class="h-12 gap-2 rounded-full px-6 text-sm font-semibold shadow-sm"
+                        >
+                            <span>{{ hero.primaryCtaLabel }}</span>
+                            <ArrowRight class="size-4" aria-hidden="true" />
+                        </Button>
+
+                        <Button
+                            v-if="
+                                hero.secondaryCtaLabel && hero.secondaryCtaHref
+                            "
+                            as="a"
+                            :href="hero.secondaryCtaHref"
+                            variant="outline"
+                            size="lg"
+                            class="h-12 rounded-full border-white/25 bg-white/10 px-6 text-sm font-semibold text-white hover:bg-white/20 hover:text-white"
+                        >
+                            {{ hero.secondaryCtaLabel }}
+                        </Button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2. Categories Section -->
+            <section aria-labelledby="categories-heading" class="space-y-5">
+                <div
+                    class="flex flex-col justify-between gap-2 sm:flex-row sm:items-end"
+                >
+                    <div>
+                        <p
+                            class="text-xs font-semibold tracking-wider text-primary uppercase"
+                        >
+                            Browse by Department
+                        </p>
+                        <h2
+                            id="categories-heading"
+                            class="mt-1 text-xl font-bold tracking-tight text-foreground sm:text-2xl"
+                        >
+                            Featured Categories
+                        </h2>
+                    </div>
+                    <Button
+                        v-if="selectedCategory"
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        class="h-9 self-start text-xs font-semibold text-primary sm:self-auto"
+                        @click="handleSelectCategory(null)"
+                    >
+                        Clear category filter
+                    </Button>
+                </div>
+
+                <div
+                    v-if="categories.length > 0"
+                    class="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
+                >
+                    <CategoryCard
+                        v-for="cat in categories"
+                        :key="cat.id"
+                        :category="cat"
+                        :active="selectedCategory === cat.slug"
+                        @select="handleSelectCategory"
+                    />
+                </div>
+
+                <EmptyState
+                    v-else
+                    :icon="Layers"
+                    title="No product categories published yet"
+                    description="Browse categories will appear here as soon as items are published to the storefront."
+                />
+            </section>
+
+            <!-- 3. Top Products Collection -->
+            <section aria-labelledby="top-products-heading" class="space-y-5">
+                <div
+                    class="flex flex-col justify-between gap-2 sm:flex-row sm:items-end"
+                >
+                    <div>
+                        <div
+                            class="inline-flex items-center gap-1.5 text-xs font-semibold tracking-wider text-primary uppercase"
+                        >
+                            <Sparkles class="size-3.5" aria-hidden="true" />
+                            <span>Verified Catalog</span>
+                        </div>
+                        <h2
+                            id="top-products-heading"
+                            class="mt-1 text-xl font-bold tracking-tight text-foreground sm:text-2xl"
+                        >
+                            Top Products
+                        </h2>
+                    </div>
+
+                    <p
+                        v-if="searchQuery || selectedCategory"
+                        class="text-sm text-muted-foreground"
+                    >
+                        Showing filtered results
+                        <span v-if="searchQuery">
+                            for
+                            <strong class="text-foreground"
+                                >"{{ searchQuery }}"</strong
+                            >
+                        </span>
+                        <span v-if="selectedCategory">
+                            in
+                            <strong class="text-foreground">{{
+                                selectedCategory
+                            }}</strong>
+                        </span>
+                    </p>
+                </div>
+
+                <div
+                    v-if="filteredProducts.length > 0"
+                    class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4"
+                >
+                    <ProductCard
+                        v-for="product in filteredProducts"
+                        :key="product.id"
+                        :product="product"
+                        @add-to-cart="handleAddToCart"
+                    />
+                </div>
+
+                <EmptyState
+                    v-else
+                    :icon="ShoppingBag"
+                    :title="
+                        searchQuery || selectedCategory
+                            ? 'No matching products found'
+                            : 'Catalog is ready for products'
+                    "
+                    :description="
+                        searchQuery || selectedCategory
+                            ? 'Try adjusting your search keywords or clearing the active category filter.'
+                            : 'No products are currently published. Check back soon for new arrivals.'
+                    "
+                    :action-label="
+                        searchQuery || selectedCategory ? 'Reset filters' : null
+                    "
+                    @action="clearFilters"
+                />
+            </section>
+
+            <!-- 4. Daily Interest (Editorial Banner + Supporting Campaign Tiles) -->
+            <!-- Per frontend-standards.md: If no campaign exists, hide the campaign module -->
+            <DailyInterestModule
+                v-if="dailyInterest"
+                :daily-interest="dailyInterest"
+            />
+        </div>
+
+        <!-- Cart Preview Dialog -->
+        <Dialog v-model:open="cartDialogOpen">
+            <DialogContent class="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Shopping Cart</DialogTitle>
+                    <DialogDescription>
+                        Review the items selected during this browsing session.
+                    </DialogDescription>
+                </DialogHeader>
+
+                <div class="py-4">
+                    <div
+                        v-if="effectiveCart.itemCount > 0"
+                        class="rounded-xl border border-border bg-secondary/40 p-4 text-sm"
+                    >
+                        <p class="font-semibold text-foreground">
+                            {{ effectiveCart.itemCount }}
+                            {{
+                                effectiveCart.itemCount === 1 ? 'item' : 'items'
+                            }}
+                            selected in current session
+                        </p>
+                        <p
+                            v-if="lastSelectedProduct"
+                            class="mt-1 text-xs text-muted-foreground"
+                        >
+                            Last added: {{ lastSelectedProduct.name }} ({{
+                                lastSelectedProduct.priceFormatted
+                            }})
+                        </p>
+                    </div>
+                    <p v-else class="text-sm text-muted-foreground">
+                        Your shopping cart is currently empty.
+                    </p>
+                </div>
+
+                <DialogFooter>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        class="h-11"
+                        @click="cartDialogOpen = false"
+                    >
+                        Continue Shopping
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    </StorefrontLayout>
+</template>
