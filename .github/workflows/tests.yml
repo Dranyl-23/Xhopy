@@ -32,14 +32,17 @@ jobs:
         with:
           node-version: '24'
           cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Setup Application
+        working-directory: backend
         run: composer setup
 
       - name: Run CI Checks (Formatting, Linting, Typecheck, Larastan, Pest)
+        working-directory: backend
         run: composer ci:check
 
       - name: Audit Dependencies
         run: |
-          composer audit --no-interaction
-          npm audit --audit-level=high
+          composer --working-dir=backend audit --no-interaction
+          npm --prefix frontend audit --audit-level=high

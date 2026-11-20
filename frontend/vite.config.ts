@@ -10,7 +10,13 @@ export default defineConfig({
     plugins: lazyPlugins(() => [
         laravel({
             input: ['resources/css/app.css', 'resources/js/app.ts'],
-            refresh: true,
+            publicDirectory: '../backend/public',
+            ssrOutputDirectory: '../backend/bootstrap/ssr',
+            refresh: [
+                '../backend/app/**',
+                '../backend/routes/**',
+                '../backend/resources/views/**',
+            ],
             fonts: [
                 bunny('Instrument Sans', {
                     weights: [400, 500, 600],
@@ -29,6 +35,12 @@ export default defineConfig({
         }),
         wayfinder({
             formVariants: true,
+            command: 'php ../backend/artisan wayfinder:generate',
+            path: 'resources/js',
+            patterns: [
+                '../backend/routes/**/*.php',
+                '../backend/app/**/Http/**/*.php',
+            ],
         }),
     ]),
     server: {

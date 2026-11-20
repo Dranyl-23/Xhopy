@@ -2,7 +2,7 @@
     "$schema":  "https://getcomposer.org/schema.json",
     "name":  "xhopy/ecommerce",
     "type":  "project",
-    "description":  "XHopy E-Commerce Platform — Laravel 13, Vue 3, Inertia 3 modular monolith.",
+    "description":  "XHopy E-Commerce Platform â€” Laravel 13, Vue 3, Inertia 3 modular monolith.",
     "keywords":  [
                      "laravel",
                      "framework"
@@ -47,8 +47,8 @@
                                   "@php -r \"file_exists(\u0027.env\u0027) || copy(\u0027.env.example\u0027, \u0027.env\u0027);\"",
                                   "@php artisan key:generate",
                                   "@php artisan migrate --force",
-                                  "npm install",
-                                  "npm run build"
+                                  "npm --prefix ../frontend install",
+                                  "npm --prefix ../frontend run build"
                               ],
                     "dev":  [
                                 "Composer\\Config::disableProcessTimeout",
@@ -62,8 +62,8 @@
                                    ],
                     "ci:check":  [
                                      "Composer\\Config::disableProcessTimeout",
-                                     "npm run check",
-                                     "npm run types:check",
+                                     "npm --prefix ../frontend run check",
+                                     "npm --prefix ../frontend run types:check",
                                      "@test"
                                  ],
                     "types:check":  [
