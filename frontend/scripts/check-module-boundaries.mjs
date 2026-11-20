@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
-const jsRoot = join(process.cwd(), 'resources', 'js');
+const jsRoot = join(process.cwd(), 'src');
 const violations = [];
 
 function walk(dir) {

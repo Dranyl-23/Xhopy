@@ -45,7 +45,7 @@
                 $normalizedFile = str_replace('\\', '/', (string) realpath($resolvedFile));
                 if ($frontendRoot !== '' && str_starts_with($normalizedFile, $frontendRoot.'/')) {
                     $candidate = substr($normalizedFile, strlen($frontendRoot) + 1);
-                    if (str_starts_with($candidate, 'resources/')) {
+                    if (str_starts_with($candidate, 'src/')) {
                         $componentEntry = $candidate;
                     }
                 }
@@ -54,8 +54,8 @@
             }
 
             $viteEntries = array_values(array_filter([
-                'resources/css/app.css',
-                'resources/js/app.ts',
+                'src/styles/app.css',
+                'src/app.ts',
                 $componentEntry,
             ]));
         @endphp

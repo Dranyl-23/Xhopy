@@ -23,12 +23,12 @@ return [
     'pages' => [
 
         'paths' => [
-            base_path('../frontend/resources/js/modules/storefront/pages'),
-            base_path('../frontend/resources/js/modules/catalog/pages'),
-            base_path('../frontend/resources/js/modules/cart/pages'),
-            base_path('../frontend/resources/js/modules/checkout/pages'),
-            base_path('../frontend/resources/js/modules/account/pages'),
-            base_path('../frontend/resources/js/modules/admin/pages'),
+            base_path('../frontend/src/modules/storefront/pages'),
+            base_path('../frontend/src/modules/catalog/pages'),
+            base_path('../frontend/src/modules/cart/pages'),
+            base_path('../frontend/src/modules/checkout/pages'),
+            base_path('../frontend/src/modules/account/pages'),
+            base_path('../frontend/src/modules/admin/pages'),
         ],
 
         'extensions' => [

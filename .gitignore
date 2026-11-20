@@ -13,9 +13,9 @@
 /backend/.env.production
 /backend/auth.json
 /frontend/node_modules
-/frontend/resources/js/actions
-/frontend/resources/js/routes
-/frontend/resources/js/wayfinder
+/frontend/src/actions
+/frontend/src/routes
+/frontend/src/wayfinder
 /frontend/playwright-report
 /frontend/test-results
 .DS_Store

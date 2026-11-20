@@ -16,7 +16,7 @@ Additionally, the product must launch as a **single-seller store** while preserv
 
 1. **Architecture & Directory Organization:** Modular Monolith inside a single repository, organized into explicit top-level **`/backend`** (Laravel 13) and **`/frontend`** (Vue 3 + TypeScript + Inertia 3) folders:
     - Backend bounded domain modules under `backend/app/Domain/`: `Identity`, `Catalog`, `Cart`, `Checkout`, `Orders`, `Inventory`, `Payments`, `Promotions`, `Customer`, `Admin`.
-    - Frontend isolated domain modules under `frontend/resources/js/modules/`: `storefront`, `catalog`, `cart`, `checkout`, `account`, `admin`, backed by a strict `frontend/resources/js/shared/` layer and automated boundary checks (`scripts/check-module-boundaries.mjs`). Cross-module imports consume only public module barrels (`@modules/<domain>`), and `shared/` never imports from `modules/`.
+    - Frontend isolated domain modules under `frontend/src/modules/`: `storefront`, `catalog`, `cart`, `checkout`, `account`, `admin`, backed by a strict `frontend/src/shared/` layer and automated boundary checks (`scripts/check-module-boundaries.mjs`). Cross-module imports consume only public module barrels (`@modules/<domain>`), and `shared/` never imports from `modules/`.
 2. **Backend Stack:**
     - **Framework:** Laravel 13 (`^13.17`, installed at `v13.43.0`) on PHP 8.3+ (local runtime PHP 8.5 / 8.4).
     - **Authentication:** Laravel Fortify (`^1.43`) + Passkeys (`^0.3`) + 2FA + Email Verification.

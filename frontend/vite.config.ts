@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { fileURLToPath, URL } from 'node:url';
 import inertia from '@inertiajs/vite';
 import { wayfinder } from '@laravel/vite-plugin-wayfinder';
@@ -7,21 +8,25 @@ import laravel from 'laravel-vite-plugin';
 import { bunny } from 'laravel-vite-plugin/fonts';
 import { defineConfig, lazyPlugins } from 'vite-plus';
 
+const phpBinary =
+    process.env.PHP_BINARY ??
+    (process.platform === 'win32' && existsSync('C:\\php85\\php.exe')
+        ? '"C:\\php85\\php.exe"'
+        : 'php');
+
 export default defineConfig({
     resolve: {
         alias: {
-            '@': fileURLToPath(new URL('./resources/js', import.meta.url)),
+            '@': fileURLToPath(new URL('./src', import.meta.url)),
             '@modules': fileURLToPath(
-                new URL('./resources/js/modules', import.meta.url),
+                new URL('./src/modules', import.meta.url),
             ),
-            '@shared': fileURLToPath(
-                new URL('./resources/js/shared', import.meta.url),
-            ),
+            '@shared': fileURLToPath(new URL('./src/shared', import.meta.url)),
         },
     },
     plugins: lazyPlugins(() => [
         laravel({
-            input: ['resources/css/app.css', 'resources/js/app.ts'],
+            input: ['src/styles/app.css', 'src/app.ts'],
             publicDirectory: '../backend/public',
             ssrOutputDirectory: '../backend/bootstrap/ssr',
             refresh: [
@@ -47,8 +52,8 @@ export default defineConfig({
         }),
         wayfinder({
             formVariants: true,
-            command: 'php ../backend/artisan wayfinder:generate',
-            path: 'resources/js',
+            command: `${phpBinary} ../backend/artisan wayfinder:generate`,
+            path: 'src',
             patterns: [
                 '../backend/routes/**/*.php',
                 '../backend/app/**/Http/**/*.php',
@@ -72,10 +77,10 @@ export default defineConfig({
             'playwright-report/**',
             'test-results/**',
             'tailwind.config.js',
-            'resources/js/actions/**',
-            'resources/js/shared/components/ui/*',
-            'resources/js/routes/**',
-            'resources/js/wayfinder/**',
+            'src/actions/**',
+            'src/shared/components/ui/*',
+            'src/routes/**',
+            'src/wayfinder/**',
         ],
         options: {
             denyWarnings: true,
@@ -92,11 +97,11 @@ export default defineConfig({
         ignorePatterns: [
             'playwright-report/**',
             'test-results/**',
-            'resources/js/shared/components/ui/*',
+            'src/shared/components/ui/*',
         ],
         sortTailwindcss: {
             functions: ['clsx', 'cn', 'cva'],
-            stylesheet: 'resources/css/app.css',
+            stylesheet: 'src/styles/app.css',
         },
     },
 });
