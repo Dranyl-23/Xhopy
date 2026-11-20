@@ -248,7 +248,7 @@ function clearFilters(): void {
                     v-else
                     :icon="Layers"
                     title="No product categories published yet"
-                    description="Categories will appear here automatically once catalog taxonomy is seeded or published in Batch 3."
+                    description="Browse categories will appear here as soon as items are published to the storefront."
                 />
             </section>
 
@@ -315,7 +315,7 @@ function clearFilters(): void {
                     :description="
                         searchQuery || selectedCategory
                             ? 'Try adjusting your search keywords or clearing the active category filter.'
-                            : 'No products are currently published. Product catalog migrations and seeding arrive in Batch 3.'
+                            : 'No products are currently published. Check back soon for new arrivals.'
                     "
                     :action-label="
                         searchQuery || selectedCategory ? 'Reset filters' : null
@@ -332,14 +332,13 @@ function clearFilters(): void {
             />
         </div>
 
-        <!-- Cart Preview Dialog (Batch 2 interactive shell feedback; server cart persistence in Batch 5) -->
+        <!-- Cart Preview Dialog -->
         <Dialog v-model:open="cartDialogOpen">
             <DialogContent class="sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle>Shopping Cart</DialogTitle>
                     <DialogDescription>
-                        Server-authoritative cart persistence and stock
-                        reservation are scheduled for Batch 5.
+                        Review the items selected during this browsing session.
                     </DialogDescription>
                 </DialogHeader>
 

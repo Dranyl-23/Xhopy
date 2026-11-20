@@ -109,6 +109,7 @@ function handleMobileCategory(slug: string | null): void {
                                 >
                                     <span
                                         class="inline-flex size-7 items-center justify-center rounded-md bg-primary text-xs font-extrabold text-primary-foreground"
+                                        aria-hidden="true"
                                     >
                                         XH
                                     </span>

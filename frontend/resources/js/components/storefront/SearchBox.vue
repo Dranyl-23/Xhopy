@@ -44,12 +44,12 @@ function clearSearch(): void {
     <form
         role="search"
         aria-label="Catalog search"
-        class="relative flex w-full items-center"
+        class="flex h-11 w-full items-center gap-1 rounded-full border border-input bg-secondary/50 pr-1.5 pl-3.5 transition-colors focus-within:border-ring focus-within:bg-background focus-within:ring-2 focus-within:ring-ring/30"
         @submit.prevent="handleSubmit"
     >
         <label :for="inputId" class="sr-only">Search catalog</label>
         <Search
-            class="pointer-events-none absolute left-3.5 size-4 text-muted-foreground"
+            class="size-4 shrink-0 text-muted-foreground"
             aria-hidden="true"
         />
         <Input
@@ -59,12 +59,12 @@ function clearSearch(): void {
             name="q"
             :placeholder="placeholder"
             autocomplete="off"
-            class="h-11 w-full rounded-full border-input bg-secondary/50 pr-24 pl-10 text-sm transition-colors focus-visible:bg-background"
+            class="h-9 min-w-0 flex-1 border-0 bg-transparent px-2 text-sm shadow-none focus-visible:ring-0 [&::-webkit-search-cancel-button]:appearance-none"
         />
         <button
             v-if="query.length > 0"
             type="button"
-            class="absolute right-14 inline-flex size-8 items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            class="inline-flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
             aria-label="Clear search query"
             @click="clearSearch"
         >
@@ -73,7 +73,7 @@ function clearSearch(): void {
         <Button
             type="submit"
             size="sm"
-            class="absolute right-1.5 h-8 rounded-full px-3.5 text-xs font-semibold"
+            class="h-8 shrink-0 rounded-full px-3.5 text-xs font-semibold"
         >
             Search
         </Button>

@@ -73,6 +73,7 @@ const currentYear = new Date().getFullYear();
                     <Link :href="home()" class="inline-flex items-center gap-2">
                         <span
                             class="inline-flex size-8 items-center justify-center rounded-lg bg-primary text-xs font-extrabold text-primary-foreground"
+                            aria-hidden="true"
                         >
                             XH
                         </span>
@@ -151,7 +152,7 @@ const currentYear = new Date().getFullYear();
                 class="mt-10 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-6 text-xs text-charcoal-foreground/60 sm:flex-row"
             >
                 <p>&copy; {{ currentYear }} XHopy. All rights reserved.</p>
-                <p>Currency: PHP (& Philippine Peso)</p>
+                <p>Currency: PHP (&#8369; Philippine Peso)</p>
             </div>
         </div>
     </footer>

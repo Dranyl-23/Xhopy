@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Check, ImageOff, ShoppingCart } from '@lucide/vue';
-import { ref } from 'vue';
+import { onBeforeUnmount, ref } from 'vue';
 import PriceDisplay from '@/components/storefront/PriceDisplay.vue';
 import RatingDisplay from '@/components/storefront/RatingDisplay.vue';
 import { Badge } from '@/components/ui/badge';
@@ -17,22 +17,45 @@ const emit = defineEmits<{
 
 const isAdding = ref(false);
 const justAdded = ref(false);
+const statusAnnouncement = ref('');
+
+let addTimer: number | undefined;
+let resetTimer: number | undefined;
+
+onBeforeUnmount(() => {
+    if (addTimer !== undefined) {
+        window.clearTimeout(addTimer);
+    }
+    if (resetTimer !== undefined) {
+        window.clearTimeout(resetTimer);
+    }
+});
 
 function handleAddToCart(): void {
     if (!props.product.inStock || isAdding.value) {
         return;
     }
 
+    if (addTimer !== undefined) {
+        window.clearTimeout(addTimer);
+    }
+    if (resetTimer !== undefined) {
+        window.clearTimeout(resetTimer);
+    }
+
     isAdding.value = true;
     emit('addToCart', props.product);
 
-    window.setTimeout(() => {
+    addTimer = window.setTimeout(() => {
         isAdding.value = false;
         justAdded.value = true;
-        window.setTimeout(() => {
+        statusAnnouncement.value = `${props.product.name} added to cart.`;
+
+        resetTimer = window.setTimeout(() => {
             justAdded.value = false;
-        }, 1400);
-    }, 180);
+            statusAnnouncement.value = '';
+        }, 1600);
+    }, 150);
 }
 </script>
 
@@ -57,11 +80,12 @@ function handleAddToCart(): void {
             <div
                 v-else
                 class="flex size-full flex-col items-center justify-center gap-2 p-4 text-center text-muted-foreground"
-                role="img"
-                :aria-label="product.imageAlt"
+                aria-hidden="true"
             >
-                <ImageOff class="size-7 opacity-60" aria-hidden="true" />
-                <span class="text-xs font-medium">{{ product.name }}</span>
+                <ImageOff class="size-7 opacity-60" />
+                <span class="line-clamp-2 text-xs font-medium">{{
+                    product.name
+                }}</span>
             </div>
 
             <!-- Stock availability badge (server-authoritative) -->
@@ -139,6 +163,10 @@ function handleAddToCart(): void {
                         }}
                     </span>
                 </Button>
+
+                <span class="sr-only" aria-live="polite">
+                    {{ statusAnnouncement }}
+                </span>
             </div>
         </div>
     </article>
