@@ -22,17 +22,24 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
         with:
-          php-version: '8.3'
+          php-version: '8.4'
+          extensions: bcmath, ctype, curl, dom, fileinfo, filter, gd, hash, iconv, intl, json, libxml, mbstring, openssl, pdo_mysql, pdo_sqlite, redis, session, sodium, tokenizer, xml, zip
           tools: composer:v2
           coverage: none
 
       - name: Setup Node
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '22'
+          node-version: '24'
+          cache: 'npm'
 
       - name: Setup Application
         run: composer setup
 
-      - name: Run CI Checks
+      - name: Run CI Checks (Formatting, Linting, Typecheck, Larastan, Pest)
         run: composer ci:check
+
+      - name: Audit Dependencies
+        run: |
+          composer audit --no-interaction
+          npm audit --audit-level=high
