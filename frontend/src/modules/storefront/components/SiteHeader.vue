@@ -4,6 +4,7 @@ import { Menu, ShieldCheck, User } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import { CartButton, type CartSummary } from '@modules/cart';
 import SearchBox from '@modules/storefront/components/SearchBox.vue';
+import BrandLogo from '@shared/components/BrandLogo.vue';
 import { Button } from '@shared/components/ui/button';
 import {
     Sheet,
@@ -103,16 +104,8 @@ function handleMobileCategory(slug: string | null): void {
                         </SheetTrigger>
                         <SheetContent side="left" class="w-80 p-6">
                             <SheetHeader class="text-left">
-                                <SheetTitle
-                                    class="flex items-center gap-2 text-lg font-bold"
-                                >
-                                    <span
-                                        class="inline-flex size-7 items-center justify-center rounded-md bg-primary text-xs font-extrabold text-primary-foreground"
-                                        aria-hidden="true"
-                                    >
-                                        XH
-                                    </span>
-                                    <span>XHopy</span>
+                                <SheetTitle class="flex items-center">
+                                    <BrandLogo size="sm" />
                                 </SheetTitle>
                                 <SheetDescription>
                                     Browse verified categories and manage your
@@ -184,26 +177,9 @@ function handleMobileCategory(slug: string | null): void {
 
                     <Link
                         :href="home()"
-                        class="flex items-center gap-2.5 rounded-lg py-1 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                        class="flex items-center rounded-lg py-1 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                     >
-                        <span
-                            class="inline-flex size-9 items-center justify-center rounded-lg bg-primary text-sm font-extrabold tracking-tighter text-primary-foreground shadow-xs"
-                            aria-hidden="true"
-                        >
-                            XH
-                        </span>
-                        <div class="flex flex-col">
-                            <span
-                                class="text-lg leading-none font-extrabold tracking-tight text-foreground"
-                            >
-                                XHopy
-                            </span>
-                            <span
-                                class="hidden text-[10px] font-medium tracking-wider text-muted-foreground uppercase sm:inline"
-                            >
-                                Official Store
-                            </span>
-                        </div>
+                        <BrandLogo size="lg" subtitle="Official Store" />
                     </Link>
                 </div>
 

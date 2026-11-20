@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
 import { Lock, ShieldCheck, Truck } from '@lucide/vue';
+import BrandLogo from '@shared/components/BrandLogo.vue';
 import { home, login, register } from '@/routes';
 
 const currentYear = new Date().getFullYear();
@@ -70,16 +71,8 @@ const currentYear = new Date().getFullYear();
         <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
             <div class="grid grid-cols-1 gap-8 md:grid-cols-4">
                 <div class="space-y-3 md:col-span-2">
-                    <Link :href="home()" class="inline-flex items-center gap-2">
-                        <span
-                            class="inline-flex size-8 items-center justify-center rounded-lg bg-primary text-xs font-extrabold text-primary-foreground"
-                            aria-hidden="true"
-                        >
-                            XH
-                        </span>
-                        <span class="text-lg font-extrabold tracking-tight">
-                            XHopy
-                        </span>
+                    <Link :href="home()" class="inline-flex items-center">
+                        <BrandLogo size="md" tone="dark" />
                     </Link>
                     <p class="max-w-sm text-sm text-charcoal-foreground/75">
                         Modern e-commerce storefront engineered for speed,
