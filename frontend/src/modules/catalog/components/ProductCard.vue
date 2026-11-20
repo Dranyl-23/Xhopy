@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Link } from '@inertiajs/vue3';
 import { Check, ImageOff, ShoppingCart } from '@lucide/vue';
 import { onBeforeUnmount, ref } from 'vue';
 import PriceDisplay from '@modules/catalog/components/PriceDisplay.vue';
@@ -67,29 +68,60 @@ function handleAddToCart(): void {
         <div
             class="relative aspect-square w-full overflow-hidden bg-secondary/70"
         >
-            <img
-                v-if="product.imageUrl"
-                :src="product.imageUrl"
-                :alt="product.imageAlt"
-                loading="lazy"
-                decoding="async"
-                width="400"
-                height="400"
-                class="size-full object-cover transition-transform duration-300 motion-safe:group-hover:scale-105"
-            />
-            <div
-                v-else
-                class="flex size-full flex-col items-center justify-center gap-2 p-4 text-center text-muted-foreground"
-                aria-hidden="true"
+            <Link
+                v-if="product.url"
+                :href="product.url"
+                :aria-label="`View details for ${product.name}`"
+                class="block size-full focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset"
             >
-                <ImageOff class="size-7 opacity-60" />
-                <span class="line-clamp-2 text-xs font-medium">{{
-                    product.name
-                }}</span>
-            </div>
+                <img
+                    v-if="product.imageUrl"
+                    :src="product.imageUrl"
+                    :alt="product.imageAlt"
+                    loading="lazy"
+                    decoding="async"
+                    width="400"
+                    height="400"
+                    class="size-full object-cover transition-transform duration-300 motion-safe:group-hover:scale-105"
+                />
+                <div
+                    v-else
+                    class="flex size-full flex-col items-center justify-center gap-2 p-4 text-center text-muted-foreground"
+                    aria-hidden="true"
+                >
+                    <ImageOff class="size-7 opacity-60" />
+                    <span class="line-clamp-2 text-xs font-medium">{{
+                        product.name
+                    }}</span>
+                </div>
+            </Link>
+            <template v-else>
+                <img
+                    v-if="product.imageUrl"
+                    :src="product.imageUrl"
+                    :alt="product.imageAlt"
+                    loading="lazy"
+                    decoding="async"
+                    width="400"
+                    height="400"
+                    class="size-full object-cover transition-transform duration-300 motion-safe:group-hover:scale-105"
+                />
+                <div
+                    v-else
+                    class="flex size-full flex-col items-center justify-center gap-2 p-4 text-center text-muted-foreground"
+                    aria-hidden="true"
+                >
+                    <ImageOff class="size-7 opacity-60" />
+                    <span class="line-clamp-2 text-xs font-medium">{{
+                        product.name
+                    }}</span>
+                </div>
+            </template>
 
             <!-- Stock availability badge (server-authoritative) -->
-            <div class="absolute top-3 left-3 flex flex-wrap gap-1.5">
+            <div
+                class="pointer-events-none absolute top-3 left-3 flex flex-wrap gap-1.5"
+            >
                 <Badge
                     :variant="product.inStock ? 'secondary' : 'outline'"
                     :class="[
@@ -100,6 +132,13 @@ function handleAddToCart(): void {
                     ]"
                 >
                     {{ product.stockLabel }}
+                </Badge>
+                <Badge
+                    v-if="product.hasVariants"
+                    variant="secondary"
+                    class="bg-background/90 px-2 py-0.5 text-[11px] font-medium text-foreground backdrop-blur-xs"
+                >
+                    Options
                 </Badge>
             </div>
         </div>
@@ -121,7 +160,14 @@ function handleAddToCart(): void {
                 <h3
                     class="mt-1.5 line-clamp-2 text-sm leading-snug font-semibold text-foreground"
                 >
-                    {{ product.name }}
+                    <Link
+                        v-if="product.url"
+                        :href="product.url"
+                        class="rounded-xs hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                    >
+                        {{ product.name }}
+                    </Link>
+                    <template v-else>{{ product.name }}</template>
                 </h3>
 
                 <p

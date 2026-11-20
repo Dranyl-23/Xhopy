@@ -49,6 +49,18 @@ return [
             'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
         ],
 
+        'gmail' => [
+            'transport' => 'smtp',
+            'scheme' => env('GMAIL_MAIL_SCHEME', 'smtps'),
+            'host' => env('GMAIL_MAIL_HOST', 'smtp.gmail.com'),
+            'port' => (int) env('GMAIL_MAIL_PORT', 465),
+            'username' => env('GMAIL_USERNAME', env('MAIL_USERNAME')),
+            'password' => env('GMAIL_APP_PASSWORD', env('MAIL_PASSWORD')),
+            'from_address' => env('GMAIL_FROM_ADDRESS', env('GMAIL_USERNAME')),
+            'timeout' => 15,
+            'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
+        ],
+
         'ses' => [
             'transport' => 'ses',
         ],
@@ -114,5 +126,9 @@ return [
         'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
+
+    'verification_mailer' => env('VERIFICATION_MAILER'),
+
+    'gmail_verification_only' => (bool) env('GMAIL_VERIFICATION_ONLY', false),
 
 ];

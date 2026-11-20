@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { Head, router } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import { ArrowRight, Eye, Layers, ShoppingBag, Sparkles } from '@lucide/vue';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
+import { CartPreviewDialog, type CartSummary } from '@modules/cart';
+import { ProductCard, type ProductSummary } from '@modules/catalog';
 import CategoryCard from '@modules/storefront/components/CategoryCard.vue';
 import DailyInterestModule from '@modules/storefront/components/DailyInterestModule.vue';
+import StorefrontLayout from '@modules/storefront/layouts/StorefrontLayout.vue';
 import EmptyState from '@shared/components/EmptyState.vue';
-import { ProductCard, type ProductSummary } from '@modules/catalog';
 import {
     Alert,
     AlertDescription,
@@ -13,17 +15,9 @@ import {
 } from '@shared/components/ui/alert';
 import { Badge } from '@shared/components/ui/badge';
 import { Button } from '@shared/components/ui/button';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from '@shared/components/ui/dialog';
-import StorefrontLayout from '@modules/storefront/layouts/StorefrontLayout.vue';
 import { home } from '@/routes';
-import type { CartSummary } from '@modules/cart';
+import { store as cartItemsStore } from '@/routes/cart/items';
+import { index as catalogIndex } from '@/routes/catalog';
 import type { StorefrontHomeProps } from '@modules/storefront/types';
 
 const props = withDefaults(defineProps<StorefrontHomeProps>(), {
@@ -45,19 +39,40 @@ const lastSelectedProduct = ref<ProductSummary | null>(null);
 const effectiveCart = computed<CartSummary>(() => ({
     itemCount: localCartCount.value,
     subtotalFormatted: props.cartSummary.subtotalFormatted,
+    items: props.cartSummary.items,
 }));
+
+watch(
+    () => props.cartSummary.itemCount,
+    (count) => {
+        localCartCount.value = count;
+    },
+);
 
 const filteredProducts = computed(() => {
     return props.topProducts;
 });
 
 function handleSearch(query: string): void {
+    if (!props.isDemoPreview) {
+        router.get(
+            catalogIndex.url({
+                query: {
+                    q: query || undefined,
+                    category: props.selectedCategory || undefined,
+                },
+            }),
+        );
+
+        return;
+    }
+
     router.get(
         home.url({
             query: {
                 q: query || undefined,
                 category: props.selectedCategory || undefined,
-                preview_demo: props.isDemoPreview ? '1' : undefined,
+                preview_demo: '1',
             },
         }),
         {},
@@ -66,12 +81,25 @@ function handleSearch(query: string): void {
 }
 
 function handleSelectCategory(slug: string | null): void {
+    if (!props.isDemoPreview) {
+        router.get(
+            catalogIndex.url({
+                query: {
+                    q: props.searchQuery || undefined,
+                    category: slug || undefined,
+                },
+            }),
+        );
+
+        return;
+    }
+
     router.get(
         home.url({
             query: {
                 q: props.searchQuery || undefined,
                 category: slug || undefined,
-                preview_demo: props.isDemoPreview ? '1' : undefined,
+                preview_demo: '1',
             },
         }),
         {},
@@ -80,8 +108,23 @@ function handleSelectCategory(slug: string | null): void {
 }
 
 function handleAddToCart(product: ProductSummary): void {
-    localCartCount.value += 1;
     lastSelectedProduct.value = product;
+
+    if (props.isDemoPreview || typeof product.id !== 'number') {
+        localCartCount.value += 1;
+        return;
+    }
+
+    router.post(
+        cartItemsStore.url(),
+        {
+            product_id: product.id,
+            quantity: 1,
+        },
+        {
+            preserveScroll: true,
+        },
+    );
 }
 
 function clearFilters(): void {
@@ -273,24 +316,41 @@ function clearFilters(): void {
                         </h2>
                     </div>
 
-                    <p
-                        v-if="searchQuery || selectedCategory"
-                        class="text-sm text-muted-foreground"
-                    >
-                        Showing filtered results
-                        <span v-if="searchQuery">
-                            for
-                            <strong class="text-foreground"
-                                >"{{ searchQuery }}"</strong
-                            >
-                        </span>
-                        <span v-if="selectedCategory">
-                            in
-                            <strong class="text-foreground">{{
-                                selectedCategory
-                            }}</strong>
-                        </span>
-                    </p>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <p
+                            v-if="searchQuery || selectedCategory"
+                            class="text-sm text-muted-foreground"
+                        >
+                            Showing filtered results
+                            <span v-if="searchQuery">
+                                for
+                                <strong class="text-foreground"
+                                    >"{{ searchQuery }}"</strong
+                                >
+                            </span>
+                            <span v-if="selectedCategory">
+                                in
+                                <strong class="text-foreground">{{
+                                    selectedCategory
+                                }}</strong>
+                            </span>
+                        </p>
+                        <Button
+                            v-if="!isDemoPreview"
+                            as-child
+                            variant="outline"
+                            size="sm"
+                            class="h-10 gap-1.5 rounded-full px-4 text-xs font-semibold"
+                        >
+                            <Link :href="catalogIndex()">
+                                <span>Browse Full Catalog</span>
+                                <ArrowRight
+                                    class="size-3.5"
+                                    aria-hidden="true"
+                                />
+                            </Link>
+                        </Button>
+                    </div>
                 </div>
 
                 <div
@@ -333,53 +393,12 @@ function clearFilters(): void {
             />
         </div>
 
-        <!-- Cart Preview Dialog -->
-        <Dialog v-model:open="cartDialogOpen">
-            <DialogContent class="sm:max-w-md">
-                <DialogHeader>
-                    <DialogTitle>Shopping Cart</DialogTitle>
-                    <DialogDescription>
-                        Review the items selected during this browsing session.
-                    </DialogDescription>
-                </DialogHeader>
-
-                <div class="py-4">
-                    <div
-                        v-if="effectiveCart.itemCount > 0"
-                        class="rounded-xl border border-border bg-secondary/40 p-4 text-sm"
-                    >
-                        <p class="font-semibold text-foreground">
-                            {{ effectiveCart.itemCount }}
-                            {{
-                                effectiveCart.itemCount === 1 ? 'item' : 'items'
-                            }}
-                            selected in current session
-                        </p>
-                        <p
-                            v-if="lastSelectedProduct"
-                            class="mt-1 text-xs text-muted-foreground"
-                        >
-                            Last added: {{ lastSelectedProduct.name }} ({{
-                                lastSelectedProduct.priceFormatted
-                            }})
-                        </p>
-                    </div>
-                    <p v-else class="text-sm text-muted-foreground">
-                        Your shopping cart is currently empty.
-                    </p>
-                </div>
-
-                <DialogFooter>
-                    <Button
-                        type="button"
-                        variant="outline"
-                        class="h-11"
-                        @click="cartDialogOpen = false"
-                    >
-                        Continue Shopping
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+        <CartPreviewDialog
+            v-model:open="cartDialogOpen"
+            :cart="effectiveCart"
+            :last-added-name="lastSelectedProduct?.name"
+            :last-added-price-formatted="lastSelectedProduct?.priceFormatted"
+            :is-demo-preview="isDemoPreview"
+        />
     </StorefrontLayout>
 </template>

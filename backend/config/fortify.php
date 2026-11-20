@@ -174,4 +174,6 @@ return [
         ]),
     ],
 
+    'require_mfa_for_privileged' => (bool) env('AUTH_REQUIRE_PRIVILEGED_MFA', false),
+
 ];

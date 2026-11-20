@@ -3,6 +3,7 @@ import { Link } from '@inertiajs/vue3';
 import { Lock, ShieldCheck, Truck } from '@lucide/vue';
 import BrandLogo from '@shared/components/BrandLogo.vue';
 import { home, login, register } from '@/routes';
+import { index as catalogIndex } from '@/routes/catalog';
 
 const currentYear = new Date().getFullYear();
 </script>
@@ -92,24 +93,28 @@ const currentYear = new Date().getFullYear();
                                 :href="home()"
                                 class="hover:text-white focus-visible:underline focus-visible:outline-none"
                             >
-                                Home &amp; Catalog
+                                Storefront Home
                             </Link>
                         </li>
                         <li>
-                            <a
-                                href="#top-products-heading"
+                            <Link
+                                :href="catalogIndex()"
                                 class="hover:text-white focus-visible:underline focus-visible:outline-none"
                             >
-                                Top Products
-                            </a>
+                                Full Catalog
+                            </Link>
                         </li>
                         <li>
-                            <a
-                                href="#categories-heading"
+                            <Link
+                                :href="
+                                    catalogIndex({
+                                        query: { sort: 'featured' },
+                                    })
+                                "
                                 class="hover:text-white focus-visible:underline focus-visible:outline-none"
                             >
-                                Categories
-                            </a>
+                                Featured Products
+                            </Link>
                         </li>
                     </ul>
                 </div>

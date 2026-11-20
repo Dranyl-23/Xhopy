@@ -1,14 +1,19 @@
 import { existsSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import process from 'node:process';
 import { defineConfig, devices } from '@playwright/test';
 
 const port = process.env.PLAYWRIGHT_PORT ?? '18080';
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${port}`;
 
+const herdPhp = path.join(os.homedir(), '.config/herd/bin/php85/php.exe');
 const phpBinary =
-    process.platform === 'win32' && existsSync('C:\\php85\\php.exe')
-        ? '"C:\\php85\\php.exe" -d extension=C:\\php85\\ext\\php_pdo_sqlite.dll -d extension=C:\\php85\\ext\\php_sodium.dll'
-        : 'php';
+    process.platform === 'win32' && existsSync(herdPhp)
+        ? `"${herdPhp}"`
+        : process.platform === 'win32' && existsSync('C:\\php85\\php.exe')
+          ? '"C:\\php85\\php.exe" -d extension=C:\\php85\\ext\\php_pdo_sqlite.dll -d extension=C:\\php85\\ext\\php_sodium.dll'
+          : 'php';
 
 const webServerCommand =
     process.env.PLAYWRIGHT_WEB_COMMAND ??

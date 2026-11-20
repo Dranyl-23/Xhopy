@@ -1,2 +1,8 @@
 export { default as CartButton } from './components/CartButton.vue';
-export type { CartSummary } from './types';
+export { default as CartPreviewDialog } from './components/CartPreviewDialog.vue';
+export type {
+    CartItemRow,
+    CartPageProps,
+    CartSummary,
+    PresentedCart,
+} from './types';

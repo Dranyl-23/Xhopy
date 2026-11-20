@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Storefront;
 
+use App\Domain\Cart\Services\CartService;
+use App\Domain\Catalog\Services\CatalogQueryService;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -9,13 +11,17 @@ use Inertia\Response;
 
 class HomeController extends Controller
 {
+    public function __construct(
+        private readonly CatalogQueryService $catalogQuery,
+        private readonly CartService $cartService,
+    ) {}
+
     /**
      * Render the XHopy storefront home page.
      *
-     * Per engineering rule #4 ("No fabricated facts"), production renders only real
-     * database records and hides optional campaign modules when none are active.
+     * Serves only real active database catalog & campaigns by default.
      * In non-production environments, passing `?preview_demo=1` loads clearly labeled
-     * [DEMO] preview items to verify the design system components.
+     * [DEMO] preview items to verify the design system components without altering DB state.
      */
     public function __invoke(Request $request): Response
     {
@@ -29,35 +35,42 @@ class HomeController extends Controller
         $selectedCategory = isset($validated['category']) ? (string) $validated['category'] : null;
         $isDemoPreview = ! app()->isProduction() && $request->boolean('preview_demo');
 
-        $categories = $isDemoPreview ? $this->demoCategories() : [];
-        $topProducts = $isDemoPreview
-            ? $this->filterDemoProducts($this->demoProducts(), $searchQuery, $selectedCategory)
-            : [];
-
-        return Inertia::render('Welcome', [
-            'announcement' => $isDemoPreview ? [
+        if ($isDemoPreview) {
+            $categories = $this->demoCategories();
+            $topProducts = $this->filterDemoProducts($this->demoProducts(), $searchQuery, $selectedCategory);
+            $announcement = [
                 'id' => 'demo-announcement',
                 'message' => '[DEMO PREVIEW] Free standard delivery on verified orders within Metro Manila.',
                 'linkText' => 'Explore Top Products',
                 'linkHref' => '#top-products-heading',
-            ] : null,
+            ];
+            $dailyInterest = $this->demoDailyInterest();
+        } else {
+            $realCatalog = $this->catalogQuery->homeCatalog($searchQuery, $selectedCategory);
+            $categories = $realCatalog['categories'];
+            $topProducts = $realCatalog['topProducts'];
+            $announcement = $realCatalog['announcement'];
+            $dailyInterest = $realCatalog['dailyInterest'];
+        }
+
+        return Inertia::render('Welcome', [
+            'announcement' => $announcement,
             'hero' => [
                 'badgeText' => 'XHopy Official Store',
                 'eyebrow' => 'Curated Everyday Essentials',
                 'title' => 'Thoughtfully engineered essentials for modern living.',
                 'subtitle' => 'Transparent pricing, real-time inventory verification, and seamless checkout built on a fast, accessible storefront.',
-                'primaryCtaLabel' => 'Browse Top Products',
-                'primaryCtaHref' => '#top-products-heading',
+                'primaryCtaLabel' => 'Browse Catalog',
+                'primaryCtaHref' => route('catalog.index'),
                 'secondaryCtaLabel' => 'Explore Categories',
                 'secondaryCtaHref' => '#categories-heading',
             ],
             'categories' => $categories,
             'topProducts' => $topProducts,
-            'dailyInterest' => $isDemoPreview ? $this->demoDailyInterest() : null,
-            'cartSummary' => [
-                'itemCount' => 0,
-                'subtotalFormatted' => null,
-            ],
+            'dailyInterest' => $dailyInterest,
+            'cartSummary' => $isDemoPreview
+                ? ['itemCount' => 0, 'subtotalFormatted' => null, 'items' => []]
+                : $this->cartService->summaryForRequest($request),
             'searchQuery' => $searchQuery,
             'selectedCategory' => $selectedCategory,
             'isDemoPreview' => $isDemoPreview,
@@ -116,6 +129,7 @@ class HomeController extends Controller
                 'name' => '[DEMO] XHopy Reference Studio Headphones',
                 'slug' => 'demo-xhopy-reference-studio-headphones',
                 'sku' => 'DEMO-AUD-001',
+                'url' => null,
                 'categoryName' => 'Audio & Acoustics',
                 'categorySlug' => 'audio-acoustics',
                 'sellerName' => 'XHopy Official',
@@ -137,6 +151,7 @@ class HomeController extends Controller
                 'name' => '[DEMO] Precision Aluminum Monitor Light Bar',
                 'slug' => 'demo-precision-aluminum-monitor-light-bar',
                 'sku' => 'DEMO-WRK-002',
+                'url' => null,
                 'categoryName' => 'Workspace & Desk',
                 'categorySlug' => 'workspace-desk',
                 'sellerName' => 'XHopy Official',
@@ -158,6 +173,7 @@ class HomeController extends Controller
                 'name' => '[DEMO] Commuter Weatherproof Tech Sling 8L',
                 'slug' => 'demo-commuter-weatherproof-tech-sling-8l',
                 'sku' => 'DEMO-EDC-003',
+                'url' => null,
                 'categoryName' => 'Everyday Carry',
                 'categorySlug' => 'everyday-carry',
                 'sellerName' => 'XHopy Official',
@@ -179,6 +195,7 @@ class HomeController extends Controller
                 'name' => '[DEMO] Compact Balanced Desktop DAC & Amp',
                 'slug' => 'demo-compact-balanced-desktop-dac-amp',
                 'sku' => 'DEMO-AUD-004',
+                'url' => null,
                 'categoryName' => 'Audio & Acoustics',
                 'categorySlug' => 'audio-acoustics',
                 'sellerName' => 'XHopy Official',

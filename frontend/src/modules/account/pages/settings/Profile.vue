@@ -10,7 +10,7 @@ import { Button } from '@shared/components/ui/button';
 import { Input } from '@shared/components/ui/input';
 import { Label } from '@shared/components/ui/label';
 import { edit } from '@/routes/profile';
-import { send } from '@/routes/verification';
+import { notice, send } from '@/routes/verification';
 
 defineOptions({
     layout: {
@@ -73,6 +73,20 @@ const user = computed(() => page.props.auth.user);
                 <InputError class="mt-2" :message="errors.email" />
             </div>
 
+            <div class="grid gap-2">
+                <Label for="phone">Contact phone (optional)</Label>
+                <Input
+                    id="phone"
+                    type="tel"
+                    class="mt-1 block w-full"
+                    name="phone"
+                    :default-value="user.phone ?? ''"
+                    autocomplete="tel"
+                    placeholder="+63 917 000 0000"
+                />
+                <InputError class="mt-2" :message="errors.phone" />
+            </div>
+
             <div v-if="page.props.mustVerifyEmail && !user.email_verified_at">
                 <p class="-mt-4 text-sm text-muted-foreground">
                     Your email address is unverified.
@@ -83,6 +97,14 @@ const user = computed(() => page.props.auth.user);
                     >
                         Click here to re-send the verification email.
                     </Link>
+                    Or
+                    <Link
+                        :href="notice()"
+                        class="text-foreground underline decoration-neutral-300 underline-offset-4 transition-colors duration-300 ease-out hover:decoration-current! dark:decoration-neutral-500"
+                    >
+                        enter a 6-digit verification code
+                    </Link>
+                    .
                 </p>
 
                 <div

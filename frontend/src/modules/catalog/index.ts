@@ -3,4 +3,16 @@ export { default as PriceDisplay } from './components/PriceDisplay.vue';
 export { default as ProductCard } from './components/ProductCard.vue';
 export { default as QuantitySelector } from './components/QuantitySelector.vue';
 export { default as RatingDisplay } from './components/RatingDisplay.vue';
-export type { PaginationMeta, ProductSummary } from './types';
+export type {
+    BrandSummary,
+    CatalogFilters,
+    CatalogIndexProps,
+    CategorySummary,
+    PaginationMeta,
+    ProductDetail,
+    ProductDetailProps,
+    ProductImageItem,
+    ProductSummary,
+    ProductVariantItem,
+    SortOption,
+} from './types';
