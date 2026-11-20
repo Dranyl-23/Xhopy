@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\DevCommands;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;
@@ -26,6 +27,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+        $this->configureDevCommands();
     }
 
     /**
@@ -52,5 +54,15 @@ class AppServiceProvider extends ServiceProvider
                 ->uncompromised()
             : null,
         );
+    }
+
+    /**
+     * Register the Vite dev server pointing to the separated /frontend workspace.
+     */
+    protected function configureDevCommands(): void
+    {
+        if ($this->app->runningInConsole() && ! $this->app->runningUnitTests()) {
+            DevCommands::register('npm --prefix ../frontend run dev', 'vite');
+        }
     }
 }

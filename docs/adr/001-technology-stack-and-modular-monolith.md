@@ -2,7 +2,7 @@
 
 - **Status:** Approved (2026-11-20)
 - **Deciders:** Project Owner & Engineering Agent
-- **Governing Skill:** `skills/xhlopy-ecommerce-engineering-skill/SKILL.md`
+- **Governing Skill:** `Skills/xhlopy-ecommerce-engineering-skill/SKILL.md`
 
 ## Context
 
@@ -14,7 +14,7 @@ Additionally, the product must launch as a **single-seller store** while preserv
 
 ## Decision
 
-1. **Architecture Pattern:** Modular Monolith inside a single Laravel 13 repository, organized by bounded domain folders under `app/Domain/`:
+1. **Architecture & Directory Organization:** Modular Monolith inside a single repository, organized into explicit top-level **`/backend`** (Laravel 13) and **`/frontend`** (Vue 3 + TypeScript + Inertia 3) folders with bounded domain modules under `backend/app/Domain/`:
     - `Identity`, `Catalog`, `Cart`, `Checkout`, `Orders`, `Inventory`, `Payments`, `Promotions`, `Customer`, `Admin`.
 2. **Backend Stack:**
     - **Framework:** Laravel 13 (`^13.17`, installed at `v13.43.0`) on PHP 8.3+ (local runtime PHP 8.5 / 8.4).
@@ -38,5 +38,5 @@ Additionally, the product must launch as a **single-seller store** while preserv
 
 ## Consequences
 
-- Thin controllers validate via Form Requests, authorize via Policies/Gates, and delegate domain rules to `app/Domain/<Module>` actions and services.
+- Thin controllers validate via Form Requests, authorize via Policies/Gates, and delegate domain rules to `backend/app/Domain/<Module>` actions and services.
 - All price, discount, tax, shipping, inventory, and payment state transitions remain strictly server-authoritative.

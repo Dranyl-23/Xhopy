@@ -56,10 +56,9 @@ export default defineConfig({
     },
     lint: {
         ignorePatterns: [
-            'vendor/**',
             'node_modules/**',
-            'public/**',
-            'bootstrap/ssr/**',
+            'playwright-report/**',
+            'test-results/**',
             'tailwind.config.js',
             'resources/js/actions/**',
             'resources/js/components/ui/*',
@@ -79,10 +78,9 @@ export default defineConfig({
         singleAttributePerLine: false,
         htmlWhitespaceSensitivity: 'css',
         ignorePatterns: [
-            '.github/**',
-            'composer.json',
+            'playwright-report/**',
+            'test-results/**',
             'resources/js/components/ui/*',
-            'resources/views/mail/*',
         ],
         sortTailwindcss: {
             functions: ['clsx', 'cn', 'cva'],
