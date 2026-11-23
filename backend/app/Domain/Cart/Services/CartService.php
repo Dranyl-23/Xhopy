@@ -4,12 +4,12 @@ namespace App\Domain\Cart\Services;
 
 use App\Domain\Cart\Models\Cart;
 use App\Domain\Cart\Models\CartItem;
-use App\Domain\Catalog\Enums\ProductStatus;
 use App\Domain\Catalog\Models\Product;
 use App\Domain\Catalog\Models\ProductImage;
 use App\Domain\Catalog\Models\ProductVariant;
 use App\Domain\Catalog\Services\CatalogPresenter;
 use App\Domain\Catalog\Services\MoneyFormatter;
+use App\Domain\Seller\Models\Store;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
@@ -202,13 +202,13 @@ final class CartService
         DB::transaction(function () use ($item, $quantity): void {
             /** @var CartItem $lockedItem */
             $lockedItem = CartItem::query()
-                ->with(['product.category', 'variant'])
+                ->with(['product.category', 'product.store', 'variant'])
                 ->whereKey($item->id)
                 ->lockForUpdate()
                 ->firstOrFail();
 
             $product = $lockedItem->product;
-            if ($product->status !== ProductStatus::Active || ! $product->category->is_active) {
+            if (! $product->isStorefrontVisible()) {
                 throw ValidationException::withMessages([
                     'quantity' => "{$product->name} is no longer active.",
                 ]);
@@ -343,6 +343,7 @@ final class CartService
      *
      * @return array{
      *     itemCount: int,
+     *     storeCount: int,
      *     currency: string,
      *     subtotalCentavos: int,
      *     subtotalFormatted: string,
@@ -351,6 +352,7 @@ final class CartService
      *     totalFormatted: string,
      *     hasStockIssues: bool,
      *     items: list<array<string, mixed>>,
+     *     sellerGroups: list<array<string, mixed>>,
      * }
      */
     public function presentCart(?Cart $cart): array
@@ -358,6 +360,7 @@ final class CartService
         if (! $cart instanceof Cart) {
             return [
                 'itemCount' => 0,
+                'storeCount' => 0,
                 'currency' => 'PHP',
                 'subtotalCentavos' => 0,
                 'subtotalFormatted' => '₱0.00',
@@ -366,12 +369,14 @@ final class CartService
                 'totalFormatted' => '₱0.00',
                 'hasStockIssues' => false,
                 'items' => [],
+                'sellerGroups' => [],
             ];
         }
 
         $cartItems = $cart->items()
             ->with([
                 'product.category',
+                'product.store',
                 'product.images',
                 'variant',
             ])
@@ -381,14 +386,31 @@ final class CartService
         $itemCount = 0;
         $hasStockIssues = false;
         $items = [];
+        /** @var array<string, array{
+         *     storeId: int|null,
+         *     storeName: string,
+         *     storeSlug: string|null,
+         *     storeUrl: string|null,
+         *     isOfficialStore: bool,
+         *     itemCount: int,
+         *     subtotalCentavos: int,
+         *     hasStockIssues: bool,
+         *     items: list<array<string, mixed>>
+         * }> $groupsMap */
+        $groupsMap = [];
         $currency = $cart->currency !== '' ? $cart->currency : 'PHP';
 
         foreach ($cartItems as $item) {
             $product = $item->product;
             $variant = $item->variant;
-            $isActiveProduct = $product->status === ProductStatus::Active
-                && $product->category->is_active
+            $isActiveProduct = $product->isStorefrontVisible()
                 && ($variant === null || $variant->is_active);
+
+            $storeModel = $product->store instanceof Store ? $product->store : null;
+            $isStoreActive = $storeModel instanceof Store && $storeModel->isActive();
+            $storeName = $storeModel instanceof Store ? $storeModel->name : $product->seller_name;
+            $storeUrl = $isStoreActive ? route('stores.show', ['store' => $storeModel->slug]) : null;
+            $isOfficialStore = $storeModel instanceof Store ? $storeModel->is_official : true;
 
             $unitPriceStr = $variant !== null ? (string) $variant->price : (string) $product->base_price;
             $unitCentavos = MoneyFormatter::toCentavos($unitPriceStr);
@@ -399,7 +421,8 @@ final class CartService
             $lineCentavos = $unitCentavos * $item->quantity;
             $lineAmountFormatted = MoneyFormatter::format(number_format($lineCentavos / 100, 2, '.', ''), $currency);
 
-            if (! $isActiveProduct || $availableStock < $item->quantity) {
+            $itemHasStockIssue = ! $isActiveProduct || $availableStock < $item->quantity;
+            if ($itemHasStockIssue) {
                 $hasStockIssues = true;
             }
 
@@ -410,7 +433,16 @@ final class CartService
             $matchedImage = ($variant !== null ? $product->images->firstWhere('variant_id', $variant->id) : null)
                 ?? $product->images->first();
 
-            $items[] = [
+            $availabilityNote = null;
+            if (! $isActiveProduct) {
+                $availabilityNote = $storeModel instanceof Store && ! $storeModel->isActive()
+                    ? 'This store is temporarily unavailable.'
+                    : 'Product is currently unavailable.';
+            } elseif ($availableStock < $item->quantity) {
+                $availabilityNote = "Only {$availableStock} unit(s) remaining.";
+            }
+
+            $presentedItem = [
                 'id' => $item->id,
                 'productId' => $product->id,
                 'productVariantId' => $variant?->id,
@@ -419,24 +451,65 @@ final class CartService
                 'productUrl' => route('products.show', ['product' => $product->slug]),
                 'variantTitle' => $variant?->title,
                 'sku' => $variant->sku ?? $product->sku,
-                'sellerName' => $product->seller_name,
+                'sellerName' => $storeName,
+                'storeId' => $product->store_id,
+                'storeSlug' => $isStoreActive ? $storeModel->slug : null,
+                'storeUrl' => $storeUrl,
+                'isOfficialStore' => $isOfficialStore,
                 'unitPriceFormatted' => MoneyFormatter::format($unitPriceStr, $currency),
                 'quantity' => $item->quantity,
                 'maxQuantity' => $availableStock,
-                'isAvailable' => $isActiveProduct && $availableStock >= $item->quantity,
-                'availabilityNote' => ! $isActiveProduct
-                    ? 'Product is currently unavailable.'
-                    : ($availableStock < $item->quantity ? "Only {$availableStock} unit(s) remaining." : null),
+                'isAvailable' => ! $itemHasStockIssue,
+                'availabilityNote' => $availabilityNote,
                 'lineTotalFormatted' => $lineAmountFormatted,
                 'imageUrl' => $matchedImage instanceof ProductImage ? $this->catalogPresenter->imageUrl($matchedImage) : null,
                 'imageAlt' => $matchedImage instanceof ProductImage ? $matchedImage->alt_text : $product->name,
             ];
+
+            $items[] = $presentedItem;
+
+            $groupKey = $product->store_id !== null
+                ? "store-{$product->store_id}"
+                : 'name-'.mb_strtolower($storeName);
+
+            if (! isset($groupsMap[$groupKey])) {
+                $groupsMap[$groupKey] = [
+                    'storeId' => $product->store_id,
+                    'storeName' => $storeName,
+                    'storeSlug' => $isStoreActive ? $storeModel->slug : null,
+                    'storeUrl' => $storeUrl,
+                    'isOfficialStore' => $isOfficialStore,
+                    'itemCount' => 0,
+                    'subtotalCentavos' => 0,
+                    'hasStockIssues' => false,
+                    'items' => [],
+                ];
+            }
+
+            $groupsMap[$groupKey]['itemCount'] += $item->quantity;
+            $groupsMap[$groupKey]['subtotalCentavos'] += $lineCentavos;
+            if ($itemHasStockIssue) {
+                $groupsMap[$groupKey]['hasStockIssues'] = true;
+            }
+            $groupsMap[$groupKey]['items'][] = $presentedItem;
         }
+
+        $sellerGroups = array_values(array_map(
+            static fn (array $group): array => [
+                ...$group,
+                'subtotalFormatted' => MoneyFormatter::format(
+                    number_format($group['subtotalCentavos'] / 100, 2, '.', ''),
+                    $currency,
+                ),
+            ],
+            $groupsMap,
+        ));
 
         $formattedSubtotal = MoneyFormatter::format(number_format($subtotalCentavos / 100, 2, '.', ''), $currency);
 
         return [
             'itemCount' => $itemCount,
+            'storeCount' => count($sellerGroups),
             'currency' => $currency,
             'subtotalCentavos' => $subtotalCentavos,
             'subtotalFormatted' => $formattedSubtotal,
@@ -445,6 +518,7 @@ final class CartService
             'totalFormatted' => $formattedSubtotal,
             'hasStockIssues' => $hasStockIssues,
             'items' => $items,
+            'sellerGroups' => $sellerGroups,
         ];
     }
 }

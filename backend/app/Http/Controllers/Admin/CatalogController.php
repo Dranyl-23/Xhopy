@@ -2,22 +2,24 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Domain\Catalog\Actions\ModerateProductAction;
 use App\Domain\Catalog\Actions\SaveProductAction;
 use App\Domain\Catalog\Enums\ProductStatus;
 use App\Domain\Catalog\Models\Brand;
 use App\Domain\Catalog\Models\Category;
 use App\Domain\Catalog\Models\Product;
-use App\Domain\Catalog\Models\ProductImage;
-use App\Domain\Catalog\Models\ProductVariant;
 use App\Domain\Catalog\Services\CatalogPresenter;
-use App\Domain\Catalog\Services\MoneyFormatter;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\ModerateProductRequest;
 use App\Http\Requests\Admin\SaveProductRequest;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use InvalidArgumentException;
 
 class CatalogController extends Controller
 {
@@ -36,7 +38,8 @@ class CatalogController extends Controller
         $statusFilter = isset($validated['status']) ? ProductStatus::tryFrom((string) $validated['status']) : null;
 
         $query = Product::query()
-            ->with(['category', 'brand', 'variants', 'images'])
+            ->with(['category', 'brand', 'store', 'variants', 'images'])
+            ->orderByRaw("CASE status WHEN 'pending_review' THEN 0 WHEN 'rejected' THEN 1 WHEN 'active' THEN 2 WHEN 'draft' THEN 3 ELSE 4 END")
             ->latest('id');
 
         if ($statusFilter instanceof ProductStatus) {
@@ -55,23 +58,9 @@ class CatalogController extends Controller
         $paginator = $query->paginate(15)->withQueryString();
 
         return Inertia::render('admin/catalog/Index', [
-            'products' => collect($paginator->items())->map(fn (Product $product): array => [
-                'id' => $product->id,
-                'name' => $product->name,
-                'slug' => $product->slug,
-                'sku' => $product->sku,
-                'status' => $product->status->value,
-                'statusLabel' => $product->status->label(),
-                'isFeatured' => $product->is_featured,
-                'categoryName' => $product->category->name,
-                'brandName' => $product->brand?->name,
-                'priceFormatted' => MoneyFormatter::format($product->resolvedUnitPrice(), $product->currency),
-                'stockQuantity' => $product->totalAvailableStock(),
-                'variantCount' => $product->variants->count(),
-                'imageUrl' => $product->images->first() !== null
-                    ? $this->presenter->imageUrl($product->images->first())
-                    : null,
-            ])->all(),
+            'products' => collect($paginator->items())
+                ->map(fn (Product $product): array => $this->presenter->managementProductRow($product))
+                ->all(),
             'pagination' => [
                 'currentPage' => $paginator->currentPage(),
                 'lastPage' => $paginator->lastPage(),
@@ -85,6 +74,7 @@ class CatalogController extends Controller
             'stats' => [
                 'totalProducts' => Product::query()->count(),
                 'activeProducts' => Product::query()->where('status', ProductStatus::Active->value)->count(),
+                'pendingReviewProducts' => Product::query()->where('status', ProductStatus::PendingReview->value)->count(),
                 'totalCategories' => Category::query()->count(),
                 'totalBrands' => Brand::query()->count(),
             ],
@@ -95,7 +85,7 @@ class CatalogController extends Controller
     {
         return Inertia::render('admin/catalog/ProductForm', [
             'product' => null,
-            ...$this->formReferenceData(),
+            ...$this->presenter->formReferenceData(ProductStatus::cases()),
         ]);
     }
 
@@ -114,46 +104,11 @@ class CatalogController extends Controller
 
     public function edit(Product $product): Response
     {
-        $product->load(['category', 'brand', 'variants', 'images']);
+        $product->load(['category', 'brand', 'store', 'moderator:id,name', 'variants', 'images']);
 
         return Inertia::render('admin/catalog/ProductForm', [
-            'product' => [
-                'id' => $product->id,
-                'category_id' => $product->category_id,
-                'brand_id' => $product->brand_id,
-                'seller_name' => $product->seller_name,
-                'name' => $product->name,
-                'slug' => $product->slug,
-                'sku' => $product->sku,
-                'short_description' => $product->short_description ?? '',
-                'description' => $product->description ?? '',
-                'status' => $product->status->value,
-                'is_featured' => $product->is_featured,
-                'currency' => $product->currency,
-                'base_price' => (string) $product->base_price,
-                'compare_at_price' => $product->compare_at_price !== null ? (string) $product->compare_at_price : '',
-                'stock_quantity' => $product->stock_quantity,
-                'specifications' => $product->specifications ?? [],
-                'variants' => $product->variants->map(fn (ProductVariant $variant): array => [
-                    'id' => $variant->id,
-                    'title' => $variant->title,
-                    'sku' => $variant->sku,
-                    'price' => (string) $variant->price,
-                    'compare_at_price' => $variant->compare_at_price !== null ? (string) $variant->compare_at_price : '',
-                    'stock_quantity' => $variant->stock_quantity,
-                    'options' => $variant->options ?? [],
-                    'is_default' => $variant->is_default,
-                    'is_active' => $variant->is_active,
-                ])->all(),
-                'images' => $product->images->map(fn (ProductImage $image): array => [
-                    'id' => $image->id,
-                    'variant_id' => $image->variant_id,
-                    'url' => $this->presenter->imageUrl($image),
-                    'alt_text' => $image->alt_text,
-                    'is_primary' => $image->is_primary,
-                ])->all(),
-            ],
-            ...$this->formReferenceData(),
+            'product' => $this->presenter->editableProduct($product),
+            ...$this->presenter->formReferenceData(ProductStatus::cases()),
         ]);
     }
 
@@ -170,26 +125,46 @@ class CatalogController extends Controller
             ->with('success', 'Product updated cleanly.');
     }
 
+    public function moderate(
+        ModerateProductRequest $request,
+        Product $product,
+        ModerateProductAction $action,
+    ): RedirectResponse {
+        $actor = $request->user();
+        if (! $actor instanceof User) {
+            abort(403);
+        }
+
+        $decision = ProductStatus::from((string) $request->validated('status'));
+        $reason = $request->validated('reason');
+
+        try {
+            $updated = $action->execute(
+                actor: $actor,
+                product: $product,
+                decision: $decision,
+                reason: is_string($reason) ? $reason : null,
+                request: $request,
+            );
+        } catch (InvalidArgumentException $exception) {
+            throw ValidationException::withMessages([
+                'reason' => $exception->getMessage(),
+            ]);
+        }
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => __('Product status updated to :status.', ['status' => $updated->status->label()]),
+        ]);
+
+        return to_route('admin.catalog.products.edit', ['product' => $updated->id]);
+    }
+
     public function destroy(Product $product): RedirectResponse
     {
         $product->delete();
 
         return to_route('admin.catalog.index')
             ->with('success', 'Product archived to trash.');
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function formReferenceData(): array
-    {
-        return [
-            'categories' => Category::query()->orderBy('sort_order')->orderBy('name')->get(['id', 'name', 'slug', 'is_active']),
-            'brands' => Brand::query()->orderBy('name')->get(['id', 'name', 'slug', 'is_active']),
-            'statuses' => array_map(
-                static fn (ProductStatus $status): array => ['value' => $status->value, 'label' => $status->label()],
-                ProductStatus::cases(),
-            ),
-        ];
     }
 }

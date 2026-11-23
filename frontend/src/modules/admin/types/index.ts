@@ -7,13 +7,18 @@ export interface AdminProductRow {
     sku: string;
     status: string;
     statusLabel: string;
+    moderationNotes?: string | null;
     isFeatured: boolean;
+    storeId?: number | null;
+    storeName?: string;
+    isOfficialStore?: boolean;
     categoryName: string;
     brandName?: string | null;
     priceFormatted: string;
     stockQuantity: number;
     variantCount: number;
     imageUrl?: string | null;
+    submittedForReviewAtDiff?: string | null;
 }
 
 export interface AdminCatalogIndexProps {
@@ -26,6 +31,7 @@ export interface AdminCatalogIndexProps {
     stats: {
         totalProducts: number;
         activeProducts: number;
+        pendingReviewProducts?: number;
         totalCategories: number;
         totalBrands: number;
     };
@@ -55,6 +61,9 @@ export interface AdminProductEditable {
     id: number;
     category_id: number;
     brand_id: number | null;
+    store_id?: number | null;
+    store_name?: string;
+    is_official_store?: boolean;
     seller_name: string;
     name: string;
     slug: string;
@@ -62,6 +71,11 @@ export interface AdminProductEditable {
     short_description: string;
     description: string;
     status: string;
+    status_label?: string;
+    moderation_notes?: string | null;
+    submitted_for_review_at?: string | null;
+    moderated_at?: string | null;
+    moderator_name?: string | null;
     is_featured: boolean;
     currency: string;
     base_price: string;
@@ -89,6 +103,7 @@ export interface AdminProductFormProps {
     categories: AdminSelectOption[];
     brands: AdminSelectOption[];
     statuses: AdminStatusOption[];
+    maxImageUploadBytes?: number;
 }
 
 export interface AdminCategoryRow {
@@ -135,6 +150,7 @@ export interface AdminUserRow {
     phone: string | null;
     role: string;
     role_label: string;
+    staff_permissions?: string[];
     email_verified: boolean;
     has_two_factor: boolean;
     has_passkeys: boolean;
@@ -290,4 +306,95 @@ export interface AdminStockMovementRow {
     order_number: string | null;
     actor_name: string;
     created_at_diff: string;
+}
+
+export interface AdminSellerSummary {
+    pending: number;
+    under_review: number;
+    approved: number;
+    rejected: number;
+    suspended: number;
+}
+
+export interface AdminSellerListRow {
+    id: number;
+    business_name: string;
+    business_type: string;
+    status: string;
+    status_label: string;
+    documents_count: number;
+    applicant: {
+        id: number;
+        name: string;
+        email: string;
+    };
+    store: {
+        id: number;
+        name: string;
+        slug: string;
+        status: string;
+        status_label: string;
+    } | null;
+    submitted_at: string | null;
+    submitted_at_diff: string;
+}
+
+export interface AdminSellerTransitionOption {
+    value: string;
+    label: string;
+    requires_reason: boolean;
+}
+
+export interface AdminSellerDetail {
+    id: number;
+    business_name: string;
+    business_type: string;
+    contact_phone: string;
+    business_address: string;
+    tax_identifier: string | null;
+    payout_notes: string | null;
+    status: string;
+    status_label: string;
+    rejection_reason: string | null;
+    submitted_at: string | null;
+    reviewed_at: string | null;
+    approved_at: string | null;
+    suspended_at: string | null;
+    reviewer_name: string | null;
+    applicant: {
+        id: number;
+        name: string;
+        email: string;
+        phone: string | null;
+        email_verified: boolean;
+        joined_at: string | null;
+    };
+    store: {
+        id: number;
+        name: string;
+        slug: string;
+        description: string | null;
+        contact_email: string | null;
+        contact_phone: string | null;
+        status: string;
+        status_label: string;
+    } | null;
+    documents: Array<{
+        id: number;
+        document_type: string;
+        document_type_label: string;
+        original_filename: string;
+        mime_type: string;
+        size_bytes: number;
+        created_at_diff: string;
+    }>;
+    status_history: Array<{
+        id: number;
+        from_status: string | null;
+        to_status: string;
+        to_status_value: string;
+        reason: string | null;
+        actor_name: string;
+        created_at: string;
+    }>;
 }

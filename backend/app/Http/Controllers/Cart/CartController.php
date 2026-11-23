@@ -5,8 +5,8 @@ namespace App\Http\Controllers\Cart;
 use App\Domain\Cart\Models\Cart;
 use App\Domain\Cart\Models\CartItem;
 use App\Domain\Cart\Services\CartService;
-use App\Domain\Catalog\Enums\ProductStatus;
 use App\Domain\Catalog\Models\Category;
+use App\Domain\Catalog\Models\Product;
 use App\Domain\Catalog\Services\CatalogPresenter;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Cart\AddCartItemRequest;
@@ -36,7 +36,7 @@ class CartController extends Controller
         $categories = Category::query()
             ->active()
             ->withCount([
-                'products' => fn (Builder $query): Builder => $query->where('status', ProductStatus::Active->value),
+                'products' => fn (Builder $query): Builder => Product::applyActiveCategoryCountFilter($query),
             ])
             ->orderBy('sort_order')
             ->orderBy('name')

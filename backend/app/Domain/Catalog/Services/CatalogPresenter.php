@@ -2,12 +2,15 @@
 
 namespace App\Domain\Catalog\Services;
 
+use App\Domain\Catalog\Enums\ProductStatus;
 use App\Domain\Catalog\Models\Brand;
 use App\Domain\Catalog\Models\CampaignContent;
 use App\Domain\Catalog\Models\Category;
 use App\Domain\Catalog\Models\Product;
 use App\Domain\Catalog\Models\ProductImage;
 use App\Domain\Catalog\Models\ProductVariant;
+use App\Domain\Seller\Models\Store;
+use Illuminate\Http\UploadedFile;
 
 final class CatalogPresenter
 {
@@ -42,12 +45,36 @@ final class CatalogPresenter
     /**
      * @return array<string, mixed>
      */
+    public function storeSummary(Store $store): array
+    {
+        return [
+            'id' => $store->id,
+            'name' => $store->name,
+            'slug' => $store->slug,
+            'description' => $store->description,
+            'logoUrl' => null,
+            'status' => $store->status->value,
+            'statusLabel' => $store->status->label(),
+            'isOfficial' => $store->is_official,
+            'productCount' => (int) ($store->getAttribute('published_products_count') ?? $store->getAttribute('products_count') ?? 0),
+            'url' => route('stores.show', ['store' => $store->slug]),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
     public function productSummary(Product $product): array
     {
         $unitPrice = $product->resolvedUnitPrice();
         $compareAt = $product->resolvedCompareAtPrice();
         $totalStock = $product->totalAvailableStock();
         $primaryImage = $product->images->first();
+        $activeStore = $product->relationLoaded('store')
+            && $product->store instanceof Store
+            && $product->store->isActive()
+            ? $product->store
+            : null;
 
         return [
             'id' => $product->id,
@@ -59,7 +86,13 @@ final class CatalogPresenter
             'categorySlug' => $product->category->slug,
             'brandName' => $product->brand?->name,
             'brandSlug' => $product->brand?->slug,
-            'sellerName' => $product->seller_name,
+            'sellerName' => $activeStore instanceof Store ? $activeStore->name : $product->seller_name,
+            'storeId' => $activeStore?->id,
+            'storeSlug' => $activeStore?->slug,
+            'storeUrl' => $activeStore instanceof Store
+                ? route('stores.show', ['store' => $activeStore->slug])
+                : null,
+            'isOfficialStore' => $activeStore instanceof Store ? $activeStore->is_official : true,
             'unitPrice' => MoneyFormatter::toFloatAmount($unitPrice),
             'priceFormatted' => MoneyFormatter::format($unitPrice, $product->currency),
             'originalPrice' => $compareAt !== null ? MoneyFormatter::toFloatAmount($compareAt) : null,
@@ -155,5 +188,106 @@ final class CatalogPresenter
     public function imageUrl(ProductImage $image): string
     {
         return route('catalog.media.show', ['productImage' => $image->id]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function managementProductRow(Product $product): array
+    {
+        $firstImage = $product->images->first();
+
+        return [
+            'id' => $product->id,
+            'name' => $product->name,
+            'slug' => $product->slug,
+            'sku' => $product->sku,
+            'status' => $product->status->value,
+            'statusLabel' => $product->status->label(),
+            'moderationNotes' => $product->moderation_notes,
+            'isFeatured' => $product->is_featured,
+            'storeId' => $product->store_id,
+            'storeName' => $product->store->name ?? $product->seller_name,
+            'isOfficialStore' => (bool) ($product->store->is_official ?? true),
+            'categoryName' => $product->category->name,
+            'brandName' => $product->brand?->name,
+            'priceFormatted' => MoneyFormatter::format($product->resolvedUnitPrice(), $product->currency),
+            'stockQuantity' => $product->totalAvailableStock(),
+            'variantCount' => $product->variants->count(),
+            'imageUrl' => $firstImage instanceof ProductImage
+                ? $this->imageUrl($firstImage)
+                : null,
+            'submittedForReviewAtDiff' => $product->submitted_for_review_at?->diffForHumans(),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function editableProduct(Product $product): array
+    {
+        return [
+            'id' => $product->id,
+            'category_id' => $product->category_id,
+            'brand_id' => $product->brand_id,
+            'store_id' => $product->store_id,
+            'store_name' => $product->store->name ?? $product->seller_name,
+            'is_official_store' => (bool) ($product->store->is_official ?? true),
+            'seller_name' => $product->seller_name,
+            'name' => $product->name,
+            'slug' => $product->slug,
+            'sku' => $product->sku,
+            'short_description' => $product->short_description ?? '',
+            'description' => $product->description ?? '',
+            'status' => $product->status->value,
+            'status_label' => $product->status->label(),
+            'moderation_notes' => $product->moderation_notes,
+            'submitted_for_review_at' => $product->submitted_for_review_at?->toDayDateTimeString(),
+            'moderated_at' => $product->moderated_at?->toDayDateTimeString(),
+            'moderator_name' => $product->moderator?->name,
+            'is_featured' => $product->is_featured,
+            'currency' => $product->currency,
+            'base_price' => (string) $product->base_price,
+            'compare_at_price' => $product->compare_at_price !== null ? (string) $product->compare_at_price : '',
+            'stock_quantity' => $product->stock_quantity,
+            'specifications' => $product->specifications ?? [],
+            'variants' => $product->variants->map(fn (ProductVariant $variant): array => [
+                'id' => $variant->id,
+                'title' => $variant->title,
+                'sku' => $variant->sku,
+                'price' => (string) $variant->price,
+                'compare_at_price' => $variant->compare_at_price !== null ? (string) $variant->compare_at_price : '',
+                'stock_quantity' => $variant->stock_quantity,
+                'options' => $variant->options ?? [],
+                'is_default' => $variant->is_default,
+                'is_active' => $variant->is_active,
+            ])->all(),
+            'images' => $product->images->map(fn (ProductImage $image): array => [
+                'id' => $image->id,
+                'variant_id' => $image->variant_id,
+                'url' => $this->imageUrl($image),
+                'alt_text' => $image->alt_text,
+                'is_primary' => $image->is_primary,
+            ])->all(),
+        ];
+    }
+
+    /**
+     * @param  list<ProductStatus>  $statuses
+     * @return array<string, mixed>
+     */
+    public function formReferenceData(array $statuses): array
+    {
+        $maxUploadBytes = min(5 * 1024 * 1024, max(512 * 1024, (int) UploadedFile::getMaxFilesize()));
+
+        return [
+            'categories' => Category::query()->orderBy('sort_order')->orderBy('name')->get(['id', 'name', 'slug', 'is_active']),
+            'brands' => Brand::query()->orderBy('name')->get(['id', 'name', 'slug', 'is_active']),
+            'statuses' => array_map(
+                static fn (ProductStatus $status): array => ['value' => $status->value, 'label' => $status->label()],
+                $statuses,
+            ),
+            'maxImageUploadBytes' => $maxUploadBytes,
+        ];
     }
 }

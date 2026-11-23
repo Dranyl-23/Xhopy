@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
-import { Check, ImageOff, ShoppingCart } from '@lucide/vue';
-import { onBeforeUnmount, ref } from 'vue';
+import { Link, router, usePage } from '@inertiajs/vue3';
+import { Check, Heart, ImageOff, ShoppingCart } from '@lucide/vue';
+import { computed, onBeforeUnmount, ref } from 'vue';
 import PriceDisplay from '@modules/catalog/components/PriceDisplay.vue';
 import RatingDisplay from '@modules/catalog/components/RatingDisplay.vue';
 import { Badge } from '@shared/components/ui/badge';
 import { Button } from '@shared/components/ui/button';
+import { login } from '@/routes';
+import { toggle as wishlistToggle } from '@/routes/wishlist';
 import type { ProductSummary } from '@modules/catalog/types';
 
 const props = defineProps<{
@@ -15,6 +17,25 @@ const props = defineProps<{
 const emit = defineEmits<{
     addToCart: [product: ProductSummary];
 }>();
+
+const page = usePage();
+const isWishlisted = computed(() =>
+    (page.props.wishlistProductIds ?? []).includes(Number(props.product.id)),
+);
+const isAuthenticated = computed(() => Boolean(page.props.auth?.user));
+
+function handleToggleWishlist(): void {
+    if (!isAuthenticated.value) {
+        router.visit(login.url());
+        return;
+    }
+
+    router.post(
+        wishlistToggle.url(Number(props.product.id)),
+        {},
+        { preserveScroll: true },
+    );
+}
 
 const isAdding = ref(false);
 const justAdded = ref(false);
@@ -141,6 +162,28 @@ function handleAddToCart(): void {
                     Options
                 </Badge>
             </div>
+
+            <button
+                type="button"
+                class="absolute top-2.5 right-2.5 z-10 inline-flex size-9 items-center justify-center rounded-full border border-border/70 bg-background/90 text-foreground shadow-xs backdrop-blur-xs transition-colors hover:bg-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                :aria-label="
+                    isWishlisted
+                        ? `Remove ${product.name} from wishlist`
+                        : `Save ${product.name} to wishlist`
+                "
+                :aria-pressed="isWishlisted"
+                @click="handleToggleWishlist"
+            >
+                <Heart
+                    :class="[
+                        'size-4',
+                        isWishlisted
+                            ? 'fill-primary text-primary'
+                            : 'text-muted-foreground',
+                    ]"
+                    aria-hidden="true"
+                />
+            </button>
         </div>
 
         <div class="flex flex-1 flex-col justify-between p-4">
@@ -172,9 +215,23 @@ function handleAddToCart(): void {
 
                 <p
                     v-if="product.sellerName"
-                    class="mt-1 text-xs text-muted-foreground"
+                    class="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground"
                 >
-                    Sold by {{ product.sellerName }}
+                    <span>Sold by</span>
+                    <Link
+                        v-if="product.storeUrl"
+                        :href="product.storeUrl"
+                        class="font-medium text-foreground/80 underline-offset-2 transition-colors hover:text-primary hover:underline"
+                    >
+                        {{ product.sellerName }}
+                    </Link>
+                    <span v-else>{{ product.sellerName }}</span>
+                    <span
+                        v-if="product.isOfficialStore"
+                        class="inline-flex items-center rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-primary uppercase"
+                    >
+                        Official
+                    </span>
                 </p>
             </div>
 

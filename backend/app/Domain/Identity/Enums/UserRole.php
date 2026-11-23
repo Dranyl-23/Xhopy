@@ -5,6 +5,7 @@ namespace App\Domain\Identity\Enums;
 enum UserRole: string
 {
     case Customer = 'customer';
+    case Seller = 'seller';
     case Staff = 'staff';
     case Admin = 'admin';
 
@@ -12,7 +13,15 @@ enum UserRole: string
     {
         return match ($this) {
             self::Staff, self::Admin => true,
-            self::Customer => false,
+            self::Customer, self::Seller => false,
+        };
+    }
+
+    public function canAccessAdminPanel(): bool
+    {
+        return match ($this) {
+            self::Staff, self::Admin => true,
+            self::Customer, self::Seller => false,
         };
     }
 
@@ -20,8 +29,9 @@ enum UserRole: string
     {
         return match ($this) {
             self::Customer => 'Customer',
-            self::Staff => 'Staff',
-            self::Admin => 'Administrator',
+            self::Seller => 'Seller',
+            self::Staff => 'Admin Staff',
+            self::Admin => 'Super Admin',
         };
     }
 }

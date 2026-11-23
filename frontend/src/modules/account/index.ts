@@ -8,5 +8,6 @@ export { default as TwoFactorRecoveryCodes } from './components/TwoFactorRecover
 export { default as TwoFactorSetupModal } from './components/TwoFactorSetupModal.vue';
 export { useTwoFactorAuth } from './composables/useTwoFactorAuth';
 export { default as AuthLayout } from './layouts/AuthLayout.vue';
+export { default as CustomerLayout } from './layouts/CustomerLayout.vue';
 export { default as SettingsLayout } from './layouts/SettingsLayout.vue';
 export type { Auth, Passkey, TwoFactorConfigContent, User } from './types';

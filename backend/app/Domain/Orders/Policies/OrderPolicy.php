@@ -10,12 +10,12 @@ class OrderPolicy
 {
     public function view(User $user, Order $order): bool
     {
-        return $order->user_id === $user->id || $user->canManageCatalog();
+        return $order->user_id === $user->id || $user->canManageOrders();
     }
 
     public function manage(User $user): bool
     {
-        return $user->canManageCatalog();
+        return $user->canManageOrders();
     }
 
     public function refund(User $user): bool

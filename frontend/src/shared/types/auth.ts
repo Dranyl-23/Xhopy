@@ -14,9 +14,17 @@ export type User = {
 
 export type Auth = {
     user: User;
+    role?: string | null;
+    roleLabel?: string | null;
+    canAccessAdmin?: boolean;
     canManageCatalog?: boolean;
+    canManageOrders?: boolean;
+    canManageInventory?: boolean;
+    canReviewSellers?: boolean;
     canManageOperations?: boolean;
     canManageUsers?: boolean;
+    isSeller?: boolean;
+    isApprovedSeller?: boolean;
     hasMfaEnabled?: boolean;
     mfaRecommended?: boolean;
 };

@@ -1,14 +1,18 @@
 <?php
 
+use App\Console\Commands\ServeCommand as AppServeCommand;
 use App\Domain\Catalog\Models\Brand;
 use App\Domain\Catalog\Models\Category;
 use App\Domain\Catalog\Models\Product;
 use App\Domain\Catalog\Models\ProductImage;
 use App\Domain\Catalog\Models\ProductVariant;
 use App\Models\User;
+use Illuminate\Foundation\Console\ServeCommand;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Storage;
+use Symfony\Component\Console\Input\ArrayInput;
 
 uses(RefreshDatabase::class);
 
@@ -145,4 +149,81 @@ test('admin category delete blocks non-empty category and campaign href rejects 
             'cta_href' => 'javascript:alert(1)',
         ])
         ->assertSessionHasErrors(['cta_href']);
+});
+
+test('admin product image upload supports webp and handles corrupted or ini-rejected uploads cleanly', function (): void {
+    Storage::fake('local');
+
+    $admin = User::factory()->admin()->create();
+    $category = Category::factory()->create();
+    $product = Product::factory()->create(['category_id' => $category->id]);
+
+    // Build genuine WebP bytes in memory when GD WebP is compiled
+    if (function_exists('imagewebp') && function_exists('imagecreatetruecolor')) {
+        $canvas = imagecreatetruecolor(8, 8);
+        expect($canvas)->not->toBeFalse();
+        ob_start();
+        imagewebp($canvas, null, 85);
+        $webpBytes = (string) ob_get_clean();
+
+        $validWebp = UploadedFile::fake()->createWithContent('shopping.webp', $webpBytes);
+
+        $this->actingAs($admin)
+            ->post(route('admin.catalog.products.images.store', $product), [
+                'image' => $validWebp,
+                'alt_text' => 'Ceramic Carafe WebP',
+                'is_primary' => true,
+            ])
+            ->assertRedirect(route('admin.catalog.products.edit', ['product' => $product->id]));
+
+        $storedImage = ProductImage::query()->where('product_id', $product->id)->first();
+        expect($storedImage)->not->toBeNull()
+            ->and($storedImage?->mime_type)->toBe('image/webp');
+        if ($storedImage !== null) {
+            Storage::disk('local')->assertExists($storedImage->path);
+        }
+    }
+
+    // Corrupted WebP bytes fail validation gracefully instead of throwing HTTP 500
+    $corruptedWebp = UploadedFile::fake()->createWithContent('broken.webp', "RIFF\x00\x00\x00\x00WEBPcorrupted");
+    $this->actingAs($admin)
+        ->post(route('admin.catalog.products.images.store', $product), [
+            'image' => $corruptedWebp,
+            'alt_text' => 'Broken WebP',
+        ])
+        ->assertSessionHasErrors(['image']);
+
+    // Simulated PHP UPLOAD_ERR_INI_SIZE explains server PHP upload_max_filesize clearly
+    $tempFile = tempnam(sys_get_temp_dir(), 'ini_err_');
+    expect($tempFile)->not->toBeFalse();
+    if (is_string($tempFile)) {
+        file_put_contents($tempFile, 'dummy');
+        $iniFailedUpload = new UploadedFile($tempFile, 'large-shopping.webp', 'image/webp', UPLOAD_ERR_INI_SIZE, true);
+
+        $this->actingAs($admin)
+            ->post(route('admin.catalog.products.images.store', $product), [
+                'image' => $iniFailedUpload,
+                'alt_text' => 'Oversized WebP',
+            ])
+            ->assertSessionHasErrors(['image']);
+
+        $errorMessage = (string) session('errors')?->first('image');
+        expect($errorMessage)->toContain('PHP server upload limit');
+        @unlink($tempFile);
+    }
+
+    expect(ServeCommand::$passthroughVariables)->toContain('TMP', 'TEMP');
+
+    $resolvedServeCommand = Artisan::all()['serve'] ?? null;
+    expect($resolvedServeCommand)->toBeInstanceOf(AppServeCommand::class);
+
+    if ($resolvedServeCommand instanceof AppServeCommand) {
+        $resolvedServeCommand->setLaravel(app());
+        $resolvedServeCommand->setInput(new ArrayInput([], $resolvedServeCommand->getDefinition()));
+        $serverCommandMethod = (new ReflectionClass($resolvedServeCommand))->getMethod('serverCommand');
+        $serverCommandMethod->setAccessible(true);
+        $serverCommandArgs = $serverCommandMethod->invoke($resolvedServeCommand);
+
+        expect($serverCommandArgs)->toContain('upload_max_filesize=8M', 'post_max_size=10M');
+    }
 });

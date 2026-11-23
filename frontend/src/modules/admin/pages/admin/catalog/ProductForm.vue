@@ -1,7 +1,15 @@
 <script setup lang="ts">
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import { ArrowLeft, ImagePlus, Plus, Star, Trash2 } from '@lucide/vue';
-import { computed, ref } from 'vue';
+import {
+    ArrowLeft,
+    CheckCircle2,
+    ImagePlus,
+    Plus,
+    ShieldAlert,
+    Star,
+    Trash2,
+} from '@lucide/vue';
+import { computed, ref, watch } from 'vue';
 import AdminCatalogTabs from '@modules/admin/components/AdminCatalogTabs.vue';
 import InputError from '@shared/components/InputError.vue';
 import { Badge } from '@shared/components/ui/badge';
@@ -19,6 +27,7 @@ import { Label } from '@shared/components/ui/label';
 import { SelectField, type SelectOption } from '@shared/components/ui/select';
 import { index as adminCatalogIndex } from '@/routes/admin/catalog';
 import {
+    moderate as moderateProduct,
     store as storeProduct,
     update as updateProduct,
 } from '@/routes/admin/catalog/products';
@@ -98,6 +107,32 @@ const imageForm = useForm({
     is_primary: false,
 });
 
+watch(
+    () => props.product?.name,
+    (nextName) => {
+        if (nextName && imageForm.alt_text.trim() === '') {
+            imageForm.alt_text = nextName;
+        }
+    },
+    { immediate: true },
+);
+
+const moderationForm = useForm({
+    status: 'active',
+    reason: props.product?.moderation_notes ?? '',
+});
+
+function submitModeration(status: 'active' | 'rejected'): void {
+    if (!props.product) {
+        return;
+    }
+
+    moderationForm.status = status;
+    moderationForm.patch(moderateProduct.url(props.product.id), {
+        preserveScroll: true,
+    });
+}
+
 function addSpecRow(): void {
     specRows.value.push({ key: '', value: '' });
 }
@@ -157,9 +192,29 @@ function submitProduct(): void {
     }
 }
 
+const mediaFileInput = ref<HTMLInputElement | null>(null);
+const maxUploadBytes = computed(
+    () => props.maxImageUploadBytes ?? 2 * 1024 * 1024,
+);
+const maxUploadMbLabel = computed(() =>
+    (maxUploadBytes.value / (1024 * 1024)).toFixed(1).replace(/\.0$/, ''),
+);
+
 function handleFileSelection(event: Event): void {
     const input = event.target as HTMLInputElement;
-    imageForm.image = input.files?.[0] ?? null;
+    const selected = input.files?.[0] ?? null;
+    imageForm.clearErrors('image');
+
+    if (selected && selected.size > maxUploadBytes.value) {
+        imageForm.image = null;
+        imageForm.setError(
+            'image',
+            `Selected file (${(selected.size / (1024 * 1024)).toFixed(2)} MB) exceeds the current ${maxUploadMbLabel.value} MB upload limit.`,
+        );
+        return;
+    }
+
+    imageForm.image = selected;
 }
 
 function submitImageUpload(): void {
@@ -177,6 +232,9 @@ function submitImageUpload(): void {
             preserveScroll: true,
             onSuccess: () => {
                 imageForm.reset('image', 'is_primary');
+                if (mediaFileInput.value) {
+                    mediaFileInput.value.value = '';
+                }
             },
         });
 }
@@ -219,6 +277,81 @@ function removeImage(imageId: number): void {
         </div>
 
         <AdminCatalogTabs active="products" />
+
+        <Card v-if="product" class="border-border bg-secondary/20">
+            <CardHeader>
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <CardTitle class="text-base">
+                            Product Moderation &amp; Store Attribution
+                        </CardTitle>
+                        <CardDescription>
+                            Store:
+                            <span class="font-medium text-foreground">{{
+                                product.store_name ?? product.seller_name
+                            }}</span>
+                            <span v-if="product.submitted_for_review_at">
+                                · Submitted
+                                {{ product.submitted_for_review_at }}
+                            </span>
+                            <span v-if="product.moderated_at">
+                                · Last moderated {{ product.moderated_at }}
+                                <span v-if="product.moderator_name">
+                                    by {{ product.moderator_name }}
+                                </span>
+                            </span>
+                        </CardDescription>
+                    </div>
+                    <Badge
+                        :variant="
+                            product.status === 'active'
+                                ? 'default'
+                                : product.status === 'rejected'
+                                  ? 'destructive'
+                                  : 'secondary'
+                        "
+                    >
+                        {{ product.status_label ?? product.status }}
+                    </Badge>
+                </div>
+            </CardHeader>
+            <CardContent class="space-y-4">
+                <div class="space-y-1.5">
+                    <Label for="moderation-reason">
+                        Moderation Feedback / Change Request Reason
+                    </Label>
+                    <Input
+                        id="moderation-reason"
+                        v-model="moderationForm.reason"
+                        placeholder="Required when requesting changes from the seller; cleared on approval."
+                        class="h-11"
+                    />
+                    <InputError :message="moderationForm.errors.reason" />
+                </div>
+
+                <div class="flex flex-wrap gap-2">
+                    <Button
+                        type="button"
+                        class="h-10 gap-1.5"
+                        :disabled="moderationForm.processing"
+                        @click="submitModeration('active')"
+                    >
+                        <CheckCircle2 class="size-4" aria-hidden="true" />
+                        <span>Approve &amp; Publish Live</span>
+                    </Button>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        class="h-10 gap-1.5 border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        :disabled="moderationForm.processing"
+                        @click="submitModeration('rejected')"
+                    >
+                        <ShieldAlert class="size-4" aria-hidden="true" />
+                        <span>Request Changes</span>
+                    </Button>
+                </div>
+            </CardContent>
+        </Card>
 
         <form class="space-y-6" @submit.prevent="submitProduct">
             <Card>
@@ -612,15 +745,17 @@ function removeImage(imageId: number): void {
                     @submit.prevent="submitImageUpload"
                 >
                     <div class="space-y-1.5">
-                        <Label for="media-file"
-                            >Image File (JPG/PNG/WebP)</Label
-                        >
-                        <Input
+                        <Label for="media-file">
+                            Image File (JPG/PNG/WebP · max
+                            {{ maxUploadMbLabel }} MB)
+                        </Label>
+                        <input
                             id="media-file"
+                            ref="mediaFileInput"
                             type="file"
                             accept="image/jpeg,image/png,image/webp"
                             required
-                            class="h-11 pt-2"
+                            class="block h-11 w-full cursor-pointer rounded-md border border-input bg-transparent px-3 py-2 text-sm text-foreground shadow-xs outline-none file:mr-3 file:rounded file:border-0 file:bg-secondary file:px-2.5 file:py-1 file:text-xs file:font-medium file:text-secondary-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
                             @change="handleFileSelection"
                         />
                         <InputError :message="imageForm.errors.image" />
@@ -651,22 +786,34 @@ function removeImage(imageId: number): void {
                         />
                     </div>
 
-                    <div class="flex items-end justify-between gap-4">
-                        <label class="flex items-center gap-2 text-sm">
-                            <input
-                                v-model="imageForm.is_primary"
-                                type="checkbox"
+                    <div
+                        class="flex flex-wrap items-center justify-between gap-4 border-t border-border/60 pt-3 sm:col-span-2"
+                    >
+                        <label
+                            class="flex min-h-11 cursor-pointer items-center gap-2 text-sm"
+                        >
+                            <Checkbox
+                                :model-value="imageForm.is_primary"
+                                @update:model-value="
+                                    (checked) => {
+                                        imageForm.is_primary = checked === true;
+                                    }
+                                "
                             />
                             <span>Set as primary image</span>
                         </label>
 
                         <Button
                             type="submit"
-                            class="h-11 gap-2"
+                            class="h-11 min-w-[160px] justify-center gap-2"
                             :disabled="imageForm.processing || !imageForm.image"
                         >
                             <ImagePlus class="size-4" aria-hidden="true" />
-                            <span>Upload Image</span>
+                            <span>{{
+                                imageForm.processing
+                                    ? 'Uploading...'
+                                    : 'Upload Image'
+                            }}</span>
                         </Button>
                     </div>
                 </form>

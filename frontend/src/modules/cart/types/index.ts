@@ -7,6 +7,10 @@ export interface CartItemRow {
     productUrl: string;
     variantTitle: string | null;
     sku: string;
+    storeId: number | null;
+    storeSlug: string | null;
+    storeUrl: string | null;
+    isOfficialStore: boolean;
     sellerName: string;
     unitPriceFormatted: string;
     quantity: number;
@@ -18,6 +22,19 @@ export interface CartItemRow {
     imageAlt: string;
 }
 
+export interface CartSellerGroup {
+    storeId: number | null;
+    storeName: string;
+    storeSlug: string | null;
+    storeUrl: string | null;
+    isOfficialStore: boolean;
+    itemCount: number;
+    subtotalCentavos: number;
+    subtotalFormatted: string;
+    hasStockIssues: boolean;
+    items: CartItemRow[];
+}
+
 export interface CartSummary {
     itemCount: number;
     subtotalFormatted: string | null;
@@ -26,6 +43,7 @@ export interface CartSummary {
 
 export interface PresentedCart {
     itemCount: number;
+    storeCount: number;
     currency: string;
     subtotalCentavos: number;
     subtotalFormatted: string;
@@ -33,6 +51,7 @@ export interface PresentedCart {
     totalCentavos: number;
     totalFormatted: string;
     hasStockIssues: boolean;
+    sellerGroups: CartSellerGroup[];
     items: CartItemRow[];
 }
 

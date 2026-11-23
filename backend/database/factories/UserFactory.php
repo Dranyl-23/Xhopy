@@ -67,10 +67,21 @@ class UserFactory extends Factory
         ]);
     }
 
-    public function staff(): static
+    /**
+     * @param  list<string>|null  $permissions
+     */
+    public function staff(?array $permissions = null): static
     {
         return $this->state(fn (array $attributes): array => [
             'role' => UserRole::Staff,
+            'staff_permissions' => $permissions,
+        ]);
+    }
+
+    public function seller(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'role' => UserRole::Seller,
         ]);
     }
 }

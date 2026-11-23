@@ -84,7 +84,7 @@ final class CatalogMediaService
 
         $resource = @imagecreatefromstring($rawBytes);
         if ($resource === false) {
-            throw new InvalidArgumentException('Uploaded image payload could not be decoded.');
+            throw new InvalidArgumentException('Uploaded image could not be decoded. Please upload a standard static JPG, PNG, or WebP image.');
         }
 
         ob_start();

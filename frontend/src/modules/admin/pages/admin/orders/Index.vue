@@ -4,6 +4,8 @@ import { CheckSquare, ChevronRight, ClipboardList, Search } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import AdminOperationsTabs from '@modules/admin/components/AdminOperationsTabs.vue';
 import { PaginationBar } from '@modules/catalog';
+import EmptyState from '@shared/components/EmptyState.vue';
+import LoadingState from '@shared/components/LoadingState.vue';
 import { Badge } from '@shared/components/ui/badge';
 import { Button } from '@shared/components/ui/button';
 import { Card, CardContent } from '@shared/components/ui/card';
@@ -48,6 +50,7 @@ const searchInput = ref(props.filters.q);
 const statusFilter = ref(props.filters.status);
 const selectedOrderIds = ref<number[]>([]);
 const bulkProcessing = ref(false);
+const isLoading = ref(false);
 
 const paginationMeta = computed(() => ({
     currentPage: props.orders.current_page,
@@ -57,6 +60,7 @@ const paginationMeta = computed(() => ({
 }));
 
 function applyFilter(pageNumber = 1): void {
+    isLoading.value = true;
     router.get(
         adminOrdersIndex.url({
             query: {
@@ -66,7 +70,13 @@ function applyFilter(pageNumber = 1): void {
             },
         }),
         {},
-        { preserveState: true, preserveScroll: true },
+        {
+            preserveState: true,
+            preserveScroll: true,
+            onFinish: () => {
+                isLoading.value = false;
+            },
+        },
     );
 }
 
@@ -203,7 +213,20 @@ function statusBadgeVariant(
 
         <Card>
             <CardContent class="p-0">
-                <div class="overflow-x-auto">
+                <div v-if="isLoading" class="p-6">
+                    <LoadingState
+                        :count="4"
+                        label="Loading customer orders..."
+                    />
+                </div>
+                <div v-else-if="orders.data.length === 0" class="p-6">
+                    <EmptyState
+                        :icon="ClipboardList"
+                        title="No orders found"
+                        description="No customer orders match your current search or status filter."
+                    />
+                </div>
+                <div v-else class="overflow-x-auto">
                     <table class="w-full text-left text-sm">
                         <thead
                             class="border-b border-border bg-muted/50 text-xs text-muted-foreground uppercase"
@@ -222,14 +245,6 @@ function statusBadgeVariant(
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-border">
-                            <tr v-if="orders.data.length === 0">
-                                <td
-                                    colspan="8"
-                                    class="px-4 py-8 text-center text-muted-foreground"
-                                >
-                                    No orders matched your current filters.
-                                </td>
-                            </tr>
                             <tr
                                 v-for="order in orders.data"
                                 :key="order.id"

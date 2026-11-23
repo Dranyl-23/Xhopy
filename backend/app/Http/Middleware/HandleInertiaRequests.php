@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Domain\Customer\Models\WishlistItem;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -38,19 +39,42 @@ class HandleInertiaRequests extends Middleware
     {
         $user = $request->user();
         $hasMfa = $user instanceof User ? $user->hasMfaEnabled() : false;
+        $canAccessAdmin = $user instanceof User && $user->canAccessAdminPanel();
         $canManageCatalog = $user instanceof User && $user->canManageCatalog();
+        $canManageOrders = $user instanceof User && $user->canManageOrders();
+        $canManageInventory = $user instanceof User && $user->canManageInventory();
+        $canReviewSellers = $user instanceof User && $user->canReviewSellers();
+        $canManageOperations = $user instanceof User && $user->canManageOperations();
+        $wishlistProductIds = $user instanceof User
+            ? WishlistItem::query()
+                ->where('user_id', $user->id)
+                ->pluck('product_id')
+                ->map(static fn (mixed $id): int => is_numeric($id) ? (int) $id : 0)
+                ->filter(static fn (int $id): bool => $id > 0)
+                ->values()
+                ->all()
+            : [];
 
         return [
             ...parent::share($request),
             'name' => config('app.name'),
             'auth' => [
                 'user' => $user,
+                'role' => $user instanceof User ? $user->role->value : null,
+                'roleLabel' => $user instanceof User ? $user->role->label() : null,
+                'canAccessAdmin' => $canAccessAdmin,
                 'canManageCatalog' => $canManageCatalog,
-                'canManageOperations' => $canManageCatalog,
-                'canManageUsers' => $user instanceof User && $user->isAdmin(),
+                'canManageOrders' => $canManageOrders,
+                'canManageInventory' => $canManageInventory,
+                'canReviewSellers' => $canReviewSellers,
+                'canManageOperations' => $canManageOperations,
+                'canManageUsers' => $user instanceof User && $user->isSuperAdmin(),
+                'isSeller' => $user instanceof User && $user->isSeller(),
+                'isApprovedSeller' => $user instanceof User && $user->hasApprovedStore(),
                 'hasMfaEnabled' => $hasMfa,
-                'mfaRecommended' => $canManageCatalog && ! $hasMfa,
+                'mfaRecommended' => $canAccessAdmin && ! $hasMfa,
             ],
+            'wishlistProductIds' => $wishlistProductIds,
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }

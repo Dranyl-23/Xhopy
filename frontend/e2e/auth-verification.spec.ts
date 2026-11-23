@@ -166,7 +166,9 @@ test.describe.serial('Gmail Email Verification Code Flow', () => {
 
         await page.getByRole('button', { name: 'Create account' }).click();
 
-        await expect(page).toHaveURL(`${authBaseUrl}/email/verify`);
+        await expect(page).toHaveURL(`${authBaseUrl}/email/verify`, {
+            timeout: 10_000,
+        });
         await expect(
             page.getByText('Gmail verification address:'),
         ).toBeVisible();

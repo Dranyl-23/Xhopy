@@ -5,7 +5,6 @@
 This is the **recommended target stack for a new XHlopy implementation**, not a claim about the current repository. The coding agent MUST inspect the existing repository before applying it.
 
 ### Mandatory decision rule
-
 1. Detect and document the current framework, language/runtime versions, database, package manager, auth, storage, hosting, tests, and integrations.
 2. If the repository already has a functioning stack, preserve it by default. Do not rewrite or migrate it to this recommendation without explicit user approval and a migration plan.
 3. If the repository is empty/new, or the user explicitly approves a stack migration, use the target stack below.
@@ -14,30 +13,29 @@ This is the **recommended target stack for a new XHlopy implementation**, not a 
 
 ## Target stack
 
-| Layer                    | Default                                  | Notes                                                                                                     |
-| ------------------------ | ---------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| Backend framework        | Laravel 13                               | Modular monolith; use supported stable patch release                                                      |
-| Backend language         | PHP 8.3+                                 | Use a currently supported PHP release compatible with the selected Laravel version                        |
-| Frontend                 | Vue 3 + TypeScript                       | Composition API; strict type checking                                                                     |
-| Server/client bridge     | Inertia.js 3                             | Single repository and Laravel routing; avoid a separate SPA/API deployment unless requirements justify it |
-| Styling                  | Tailwind CSS                             | Centralized design tokens and responsive utilities                                                        |
-| Component primitives     | shadcn-vue                               | Accessible, composable components; own the application-level design system                                |
-| Database                 | MySQL 8.4 LTS                            | Relational source of truth; verify hosting compatibility and supported version                            |
-| Cache / queue / sessions | Redis                                    | Introduce when deployment supports it; database-backed queue/cache may be used initially                  |
-| Build tooling            | Vite                                     | Use the framework starter kit's supported configuration                                                   |
-| Backend tests            | Pest (Laravel-compatible)                | Unit, feature, database, authorization, and integration tests                                             |
-| Browser E2E              | Playwright                               | Critical storefront, admin, checkout, and responsive flows                                                |
-| File/object storage      | S3-compatible object storage             | Private by default; signed URLs for protected assets                                                      |
-| Payment gateway          | PayMongo adapter                         | Sandbox first; provider eligibility, activation, fees, and methods must be confirmed                      |
-| Source control / CI      | Git + GitHub Actions (if GitHub is used) | Automated quality gates; no secrets in repository                                                         |
-| Local environment        | Existing team standard; Docker optional  | Do not force Docker if the repo already has a stable local setup                                          |
+| Layer | Default | Notes |
+|---|---|---|
+| Backend framework | Laravel 13 | Modular monolith; use supported stable patch release |
+| Backend language | PHP 8.3+ | Use a currently supported PHP release compatible with the selected Laravel version |
+| Frontend | Vue 3 + TypeScript | Composition API; strict type checking |
+| Server/client bridge | Inertia.js 3 | Single repository and Laravel routing; avoid a separate SPA/API deployment unless requirements justify it |
+| Styling | Tailwind CSS | Centralized design tokens and responsive utilities |
+| Component primitives | shadcn-vue | Accessible, composable components; own the application-level design system |
+| Database | MySQL 8.4 LTS | Relational source of truth; verify hosting compatibility and supported version |
+| Cache / queue / sessions | Redis | Introduce when deployment supports it; database-backed queue/cache may be used initially |
+| Build tooling | Vite | Use the framework starter kit's supported configuration |
+| Backend tests | Pest (Laravel-compatible) | Unit, feature, database, authorization, and integration tests |
+| Browser E2E | Playwright | Critical storefront, admin, checkout, and responsive flows |
+| File/object storage | S3-compatible object storage | Private by default; signed URLs for protected assets |
+| Payment gateway | PayMongo adapter | Sandbox first; provider eligibility, activation, fees, and methods must be confirmed |
+| Source control / CI | Git + GitHub Actions (if GitHub is used) | Automated quality gates; no secrets in repository |
+| Local environment | Existing team standard; Docker optional | Do not force Docker if the repo already has a stable local setup |
 
 ## Architecture choice
 
 Start with a **modular monolith**, not microservices.
 
 Suggested Laravel module boundaries:
-
 - Identity & Access
 - Catalog
 - Categories & Merchandising
@@ -107,7 +105,6 @@ Use Inertia pages for interactive storefront/admin pages. Keep server-side valid
 ## Deployment guidance
 
 Do not prescribe a hosting provider before checking project constraints, budget, region, operational capacity, and existing deployment. Deployment should support:
-
 - PHP/Laravel runtime compatible with the chosen version
 - MySQL with automated backups and restore procedures
 - Redis if used

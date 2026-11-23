@@ -4,7 +4,6 @@ namespace App\Domain\Orders\Actions;
 
 use App\Domain\Cart\Models\Cart;
 use App\Domain\Cart\Models\CartItem;
-use App\Domain\Catalog\Enums\ProductStatus;
 use App\Domain\Catalog\Models\Product;
 use App\Domain\Catalog\Models\ProductVariant;
 use App\Domain\Catalog\Services\MoneyFormatter;
@@ -91,15 +90,14 @@ final class PlaceOrderAction
             foreach ($cartItems as $cartItem) {
                 /** @var Product|null $product */
                 $product = Product::query()
-                    ->with('category')
+                    ->with(['category', 'store'])
                     ->whereKey($cartItem->product_id)
                     ->lockForUpdate()
                     ->first();
 
                 if (
                     ! $product instanceof Product
-                    || $product->status !== ProductStatus::Active
-                    || ! $product->category->is_active
+                    || ! $product->isStorefrontVisible()
                 ) {
                     throw ValidationException::withMessages([
                         'cart' => 'One or more items in your cart are no longer active for checkout.',

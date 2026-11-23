@@ -4,6 +4,7 @@ import { Lock, ShieldCheck, Truck } from '@lucide/vue';
 import BrandLogo from '@shared/components/BrandLogo.vue';
 import { home, login, register } from '@/routes';
 import { index as catalogIndex } from '@/routes/catalog';
+import { index as storesIndex } from '@/routes/stores';
 
 const currentYear = new Date().getFullYear();
 </script>
@@ -114,6 +115,14 @@ const currentYear = new Date().getFullYear();
                                 class="hover:text-white focus-visible:underline focus-visible:outline-none"
                             >
                                 Featured Products
+                            </Link>
+                        </li>
+                        <li>
+                            <Link
+                                :href="storesIndex()"
+                                class="hover:text-white focus-visible:underline focus-visible:outline-none"
+                            >
+                                Verified Stores
                             </Link>
                         </li>
                     </ul>

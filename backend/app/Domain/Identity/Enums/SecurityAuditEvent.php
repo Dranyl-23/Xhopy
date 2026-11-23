@@ -25,6 +25,20 @@ enum SecurityAuditEvent: string
     case OrdersBulkTransitioned = 'admin.orders_bulk_updated';
     case InventoryAdjusted = 'admin.inventory_adjusted';
     case InventoryBulkImported = 'admin.inventory_imported';
+    case StaffPermissionsUpdated = 'admin.staff_permissions_updated';
+    case SellerApplicationSubmitted = 'seller.application_submitted';
+    case SellerUnderReview = 'admin.seller_under_review';
+    case SellerApproved = 'admin.seller_approved';
+    case SellerRejected = 'admin.seller_rejected';
+    case SellerSuspended = 'admin.seller_suspended';
+    case SellerReactivated = 'admin.seller_reactivated';
+    case SellerDocumentDownloaded = 'seller.document_downloaded';
+    case SellerStoreUpdated = 'seller.store_updated';
+    case SellerProductSubmittedForReview = 'seller.product_submitted';
+    case AdminProductApproved = 'admin.product_approved';
+    case AdminProductRejected = 'admin.product_rejected';
+    case SellerInventoryAdjusted = 'seller.inventory_adjusted';
+    case SellerInventoryBulkImported = 'seller.inventory_imported';
 
     public function label(): string
     {
@@ -50,6 +64,20 @@ enum SecurityAuditEvent: string
             self::OrdersBulkTransitioned => 'Admin bulk-advanced orders',
             self::InventoryAdjusted => 'Admin adjusted inventory stock',
             self::InventoryBulkImported => 'Admin imported inventory CSV',
+            self::StaffPermissionsUpdated => 'Super Admin updated staff permissions',
+            self::SellerApplicationSubmitted => 'Seller onboarding application submitted',
+            self::SellerUnderReview => 'Seller application moved to review',
+            self::SellerApproved => 'Super Admin approved seller account',
+            self::SellerRejected => 'Super Admin rejected seller application',
+            self::SellerSuspended => 'Super Admin suspended seller account',
+            self::SellerReactivated => 'Super Admin reactivated seller account',
+            self::SellerDocumentDownloaded => 'Seller verification document accessed',
+            self::SellerStoreUpdated => 'Seller updated store profile details',
+            self::SellerProductSubmittedForReview => 'Seller submitted product for moderation review',
+            self::AdminProductApproved => 'Admin approved seller product listing live',
+            self::AdminProductRejected => 'Admin requested changes on product listing',
+            self::SellerInventoryAdjusted => 'Seller adjusted store inventory stock',
+            self::SellerInventoryBulkImported => 'Seller imported store inventory CSV',
         };
     }
 }

@@ -199,7 +199,7 @@ test.describe.serial('Batch 4 Identity, Address Book & Admin Roles', () => {
             .fill('Batch4!Pass2026');
         await page.getByRole('button', { name: 'Log in' }).click();
 
-        await expect(page).toHaveURL(/\/dashboard/);
+        await expect(page).toHaveURL(/\/admin\/operations/);
         await page.goto(`${batch4BaseUrl}/admin/users`, {
             waitUntil: 'networkidle',
         });

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Cart\CartController;
 use App\Http\Controllers\Checkout\CheckoutController;
+use App\Http\Controllers\Customer\WishlistController;
 use App\Http\Controllers\Orders\OrderController;
 use Illuminate\Support\Facades\Route;
 
@@ -48,4 +49,12 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::post('/orders/{order}/retry-payment', [OrderController::class, 'retryPayment'])
         ->whereNumber('order')
         ->name('orders.retry-payment');
+
+    Route::get('/wishlist', [WishlistController::class, 'index'])->name('wishlist.index');
+    Route::post('/wishlist/{product}/toggle', [WishlistController::class, 'toggle'])
+        ->whereNumber('product')
+        ->name('wishlist.toggle');
+    Route::delete('/wishlist/{wishlistItem}', [WishlistController::class, 'destroy'])
+        ->whereNumber('wishlistItem')
+        ->name('wishlist.destroy');
 });

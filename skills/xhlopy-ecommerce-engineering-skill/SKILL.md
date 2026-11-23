@@ -30,10 +30,17 @@ Read `references/recommended-tech-stack.md` before proposing implementation arch
 
 **Do not force this stack onto an existing repository.** Repository discovery takes precedence. Preserve a functioning existing stack unless the user explicitly approves migration. If a new project or approved migration is involved, verify current official compatibility and versions before installing packages. Start with a modular monolith; do not introduce microservices without a demonstrated need.
 
+## Confirmed product architecture: hybrid multi-vendor marketplace
+
+Read `references/architecture-decision.md` before changing product architecture, authentication, authorization, seller onboarding, order processing, inventory, payments, commissions, or payouts. The project owner confirmed this decision on 2026-11-21.
+
+XHlopy has three separate portals: **Super Admin**, **Seller**, and **Customer**. Build multi-vendor data ownership and authorization boundaries from the beginning. Seller registration does not grant selling privileges: sellers require Super Admin approval before operating. Customers can have a parent order containing seller-specific fulfillment groups. Sellers can access only their own store resources and assigned order items. Super Admin/staff access must be permission-controlled and audited.
+
+The architecture is multi-vendor-ready, but features may be launched behind controlled approval/feature gates. Do not invent commission rates, payout schedules, seller document requirements, tax/shipping allocation, refund/cancellation rules, or dispute policies. List unresolved business decisions and obtain owner approval. Never enable automatic payouts or production payment flows without explicit approval and end-to-end verification.
+
 ## Required workflow
 
 ### Phase 0 — Understand the project
-
 - Identify framework, language, package manager, runtime versions, database, ORM/query layer, authentication, storage, payment provider, deployment target, and test tooling.
 - Map existing customer-facing pages, admin pages, API endpoints, database tables, background jobs, and third-party integrations.
 - Inspect current design assets and reference screenshots.
@@ -41,7 +48,6 @@ Read `references/recommended-tech-stack.md` before proposing implementation arch
 - Create a concise architecture map and note unknowns. Do not assume missing features exist.
 
 ### Phase 1 — Baseline and plan
-
 - Establish current build/test status before editing.
 - Record existing failures separately from regressions introduced by the change.
 - Define acceptance criteria, affected layers, data changes, API changes, security impact, and rollback strategy.
@@ -49,10 +55,10 @@ Read `references/recommended-tech-stack.md` before proposing implementation arch
 - For unclear business rules, ask one focused question rather than inventing a rule.
 
 ### Phase 2 — Design and implementation
-
 - Follow `references/frontend-standards.md` for interface work.
 - Follow `references/backend-standards.md` for APIs and business logic.
 - Follow `references/database-standards.md` for schema and data access.
+- Follow `references/architecture-decision.md` for the confirmed marketplace model, portal boundaries, seller approval, order splitting, and tenant isolation.
 - Follow `references/security-standards.md` for security-sensitive work.
 - Follow `references/testing-and-release.md` for verification and release.
 - Keep UI, API, and persistence responsibilities separated.
@@ -60,7 +66,6 @@ Read `references/recommended-tech-stack.md` before proposing implementation arch
 - Add documentation and tests alongside behavior changes.
 
 ### Phase 3 — Review and verification
-
 - Review the diff for accidental changes, debug code, secrets, unsafe defaults, dead code, and unrelated formatting.
 - Verify authorization on every protected server operation.
 - Test failure paths, edge cases, and concurrent updates—not only happy paths.
@@ -70,9 +75,7 @@ Read `references/recommended-tech-stack.md` before proposing implementation arch
 - Verify logs do not expose sensitive data.
 
 ### Phase 4 — Handoff
-
 Provide:
-
 - Summary of what changed and why.
 - Files/modules affected.
 - Database migrations and data implications.
@@ -85,7 +88,6 @@ Provide:
 ## XHlopy product scope
 
 Treat these as potential system domains, not proof that each feature already exists. Confirm the repository and approved requirements before implementing:
-
 - Storefront and navigation
 - Product catalog, categories, brands, variants, images, attributes
 - Search, filtering, sorting, and pagination
@@ -95,14 +97,16 @@ Treat these as potential system domains, not proof that each feature already exi
 - Customer accounts and addresses
 - Orders, fulfillment, shipping, returns, refunds
 - Inventory and stock reservations
-- Admin dashboard and catalog/order/customer management
+- Super Admin, Seller, and Customer portals with strict role and resource ownership boundaries
+- Seller onboarding, verification, approval, rejection, suspension, and reactivation
+- Multi-vendor parent orders and seller-specific fulfillment groups
+- Marketplace commissions, seller ledgers, refunds, disputes, and payouts (only under approved policies)
 - Notifications, audit trail, analytics
 - Payment gateway and shipping-provider integrations
 
 ## Visual direction from the supplied XHlopy references
 
 Use the redesigned concept as direction, not as a rigid requirement:
-
 - Primary palette: deep red / red accents, white, charcoal, and restrained neutral grays.
 - Clean header with brand, navigation, search, cart, and account access.
 - Clear promotional hero and category navigation.

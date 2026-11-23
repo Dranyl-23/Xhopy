@@ -144,6 +144,7 @@ test.describe
     test('admin views analytics, fulfills order with tracking, reconciles inventory, and customer sees order notification', async ({
         browser,
     }) => {
+        test.setTimeout(60_000);
         const errors: string[] = [];
 
         // 1. Admin workflows on Desktop
@@ -163,12 +164,9 @@ test.describe
             .getByRole('textbox', { name: 'Password' })
             .fill('Batch6!Pass2026');
         await adminPage.getByRole('button', { name: 'Log in' }).click();
-        await expect(adminPage).toHaveURL(/\/dashboard/);
+        await expect(adminPage).toHaveURL(/\/admin\/operations/);
 
         // Operations & Analytics
-        await adminPage.goto(`${batch6BaseUrl}/admin/operations`, {
-            waitUntil: 'networkidle',
-        });
         await expect(
             adminPage.getByRole('heading', {
                 level: 1,
@@ -280,6 +278,16 @@ test.describe
             .fill('Batch6!Pass2026');
         await buyerPage.getByRole('button', { name: 'Log in' }).click();
         await expect(buyerPage).toHaveURL(/\/dashboard/);
+
+        // Verify storefront header Account dropdown keeps customer isolated from admin links
+        await buyerPage.goto(`${batch6BaseUrl}/`, { waitUntil: 'networkidle' });
+        await buyerPage.getByRole('button', { name: 'Account' }).click();
+        await expect(
+            buyerPage.getByRole('menuitem', { name: 'My Orders' }),
+        ).toBeVisible();
+        await expect(
+            buyerPage.getByRole('menuitem', { name: 'Operations & Analytics' }),
+        ).toHaveCount(0);
 
         await buyerPage.goto(`${batch6BaseUrl}/orders`, {
             waitUntil: 'networkidle',

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Domain\Catalog\Services\MoneyFormatter;
 use App\Domain\Identity\Actions\UpdateUserRoleAction;
+use App\Domain\Identity\Enums\StaffPermission;
 use App\Domain\Identity\Enums\UserRole;
 use App\Domain\Identity\Models\SecurityAuditLog;
 use App\Http\Controllers\Controller;
@@ -11,6 +12,7 @@ use App\Http\Requests\Admin\UpdateUserRoleRequest;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -22,7 +24,7 @@ class UserController extends Controller
     {
         $validated = $request->validate([
             'q' => ['nullable', 'string', 'max:120'],
-            'role' => ['nullable', 'string', 'in:customer,staff,admin'],
+            'role' => ['nullable', 'string', Rule::enum(UserRole::class)],
         ]);
 
         $search = isset($validated['q']) ? trim((string) $validated['q']) : '';
@@ -55,6 +57,7 @@ class UserController extends Controller
             'phone' => $user->phone,
             'role' => $user->role->value,
             'role_label' => $user->role->label(),
+            'staff_permissions' => $user->resolvedStaffPermissions(),
             'email_verified' => $user->hasVerifiedEmail(),
             'has_two_factor' => $user->hasEnabledTwoFactorAuthentication(),
             'has_passkeys' => (bool) ($user->getAttribute('passkeys_exists') ?? false),
@@ -95,10 +98,19 @@ class UserController extends Controller
             UserRole::cases(),
         );
 
+        $staffPermissions = array_map(
+            static fn (StaffPermission $permission): array => [
+                'value' => $permission->value,
+                'label' => $permission->label(),
+            ],
+            StaffPermission::cases(),
+        );
+
         return Inertia::render('admin/Users', [
             'users' => $users,
             'recentAuditLogs' => $recentAuditLogs,
             'roles' => $roles,
+            'staffPermissions' => $staffPermissions,
             'filters' => [
                 'q' => $search,
                 'role' => $roleFilter,
@@ -116,10 +128,22 @@ class UserController extends Controller
             abort(403);
         }
 
-        $targetRole = UserRole::from((string) $request->validated('role'));
+        $validated = $request->validated();
+        $targetRole = UserRole::from((string) $validated['role']);
+        $updatePermissions = array_key_exists('staff_permissions', $validated);
+        $rawPermissions = $updatePermissions && is_array($validated['staff_permissions'])
+            ? array_values(array_map(static fn (mixed $item): string => (string) $item, $validated['staff_permissions']))
+            : null;
 
         try {
-            $action->execute($actor, $user, $targetRole, $request);
+            $action->execute(
+                actor: $actor,
+                target: $user,
+                newRole: $targetRole,
+                staffPermissions: $rawPermissions,
+                updatePermissions: $updatePermissions,
+                request: $request,
+            );
         } catch (InvalidArgumentException $exception) {
             throw ValidationException::withMessages([
                 'role' => $exception->getMessage(),

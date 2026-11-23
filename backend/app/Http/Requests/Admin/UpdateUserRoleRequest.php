@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Domain\Identity\Enums\StaffPermission;
 use App\Domain\Identity\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
@@ -23,6 +24,8 @@ class UpdateUserRoleRequest extends FormRequest
     {
         return [
             'role' => ['required', 'string', Rule::enum(UserRole::class)],
+            'staff_permissions' => ['sometimes', 'nullable', 'array'],
+            'staff_permissions.*' => ['required', 'string', Rule::enum(StaffPermission::class)],
         ];
     }
 }

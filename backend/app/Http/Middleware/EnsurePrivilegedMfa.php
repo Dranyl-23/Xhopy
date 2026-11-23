@@ -27,7 +27,7 @@ class EnsurePrivilegedMfa
             abort(403);
         }
 
-        if (! $user->canManageCatalog() || $user->hasMfaEnabled()) {
+        if (! $user->canAccessAdminPanel() || $user->hasMfaEnabled()) {
             return $next($request);
         }
 

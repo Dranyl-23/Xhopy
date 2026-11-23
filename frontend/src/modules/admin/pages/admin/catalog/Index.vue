@@ -30,10 +30,21 @@ const props = defineProps<AdminCatalogIndexProps>();
 const searchInput = ref(props.filters.q);
 const statusInput = ref(props.filters.status);
 const statusFilterOptions = [
+    { value: 'pending_review', label: 'Pending Review' },
     { value: 'active', label: 'Active' },
+    { value: 'rejected', label: 'Changes Requested' },
     { value: 'draft', label: 'Draft' },
     { value: 'archived', label: 'Archived' },
 ] as const;
+
+function badgeVariantForStatus(
+    status: string,
+): 'default' | 'secondary' | 'destructive' | 'outline' {
+    if (status === 'active') return 'default';
+    if (status === 'rejected') return 'destructive';
+    if (status === 'pending_review') return 'outline';
+    return 'secondary';
+}
 
 function applyFilter(page = 1): void {
     router.get(
@@ -86,7 +97,7 @@ function handleDelete(product: AdminProductRow): void {
         <AdminCatalogTabs active="products" />
 
         <!-- Summary Metrics -->
-        <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div class="grid grid-cols-2 gap-4 lg:grid-cols-5">
             <Card>
                 <CardHeader class="pb-2">
                     <CardTitle
@@ -98,6 +109,26 @@ function handleDelete(product: AdminProductRow): void {
                 <CardContent>
                     <p class="text-2xl font-bold tabular-nums">
                         {{ stats.totalProducts }}
+                    </p>
+                </CardContent>
+            </Card>
+            <Card
+                class="cursor-pointer transition-colors hover:border-primary/50"
+                @click="
+                    statusInput = 'pending_review';
+                    applyFilter();
+                "
+            >
+                <CardHeader class="pb-2">
+                    <CardTitle
+                        class="text-xs font-medium text-muted-foreground"
+                    >
+                        Pending Moderation
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p class="text-2xl font-bold text-primary tabular-nums">
+                        {{ stats.pendingReviewProducts ?? 0 }}
                     </p>
                 </CardContent>
             </Card>
@@ -185,6 +216,7 @@ function handleDelete(product: AdminProductRow): void {
                 >
                     <tr>
                         <th class="px-4 py-3">Product</th>
+                        <th class="px-4 py-3">Store</th>
                         <th class="px-4 py-3">Category</th>
                         <th class="px-4 py-3">Status</th>
                         <th class="px-4 py-3">Price</th>
@@ -195,7 +227,7 @@ function handleDelete(product: AdminProductRow): void {
                 <tbody class="divide-y divide-border">
                     <tr v-if="products.length === 0">
                         <td
-                            colspan="6"
+                            colspan="7"
                             class="px-4 py-10 text-center text-muted-foreground"
                         >
                             No products match your filters. Create your first
@@ -246,6 +278,17 @@ function handleDelete(product: AdminProductRow): void {
                                 </div>
                             </div>
                         </td>
+                        <td class="px-4 py-3">
+                            <Badge
+                                :variant="
+                                    item.isOfficialStore
+                                        ? 'secondary'
+                                        : 'outline'
+                                "
+                            >
+                                {{ item.storeName ?? 'XHopy Official' }}
+                            </Badge>
+                        </td>
                         <td class="px-4 py-3 text-muted-foreground">
                             {{ item.categoryName }}
                         </td>
@@ -253,9 +296,7 @@ function handleDelete(product: AdminProductRow): void {
                             <div class="flex flex-wrap gap-1">
                                 <Badge
                                     :variant="
-                                        item.status === 'active'
-                                            ? 'default'
-                                            : 'secondary'
+                                        badgeVariantForStatus(item.status)
                                     "
                                 >
                                     {{ item.statusLabel }}

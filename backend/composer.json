@@ -52,7 +52,11 @@
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
-            "@php artisan dev"
+            "@php -d upload_max_filesize=8M -d post_max_size=10M artisan serve"
+        ],
+        "serve": [
+            "Composer\\Config::disableProcessTimeout",
+            "@php -d upload_max_filesize=8M -d post_max_size=10M artisan serve"
         ],
         "lint": [
             "pint --parallel"

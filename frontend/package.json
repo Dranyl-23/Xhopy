@@ -9,7 +9,7 @@
         "check": "vp check && node scripts/check-module-boundaries.mjs",
         "check:boundaries": "node scripts/check-module-boundaries.mjs",
         "check:fix": "vp check --fix",
-        "types:check": "vue-tsc --noEmit",
+        "types:check": "vue-tsc --noEmit && tsc -p e2e/tsconfig.json --noEmit",
         "test:e2e": "playwright test"
     },
     "dependencies": {

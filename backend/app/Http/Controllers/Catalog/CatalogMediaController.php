@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers\Catalog;
 
-use App\Domain\Catalog\Enums\ProductStatus;
 use App\Domain\Catalog\Models\ProductImage;
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -13,13 +14,13 @@ class CatalogMediaController extends Controller
 {
     public function show(Request $request, ProductImage $productImage): StreamedResponse
     {
-        $productImage->load('product.category');
+        $productImage->load('product.category', 'product.store');
         $product = $productImage->product;
 
-        $isPublished = $product->status === ProductStatus::Active
-            && $product->category->is_active;
+        $isPublished = $product->isStorefrontVisible();
+        $user = $request->user();
 
-        if (! $isPublished && ! ($request->user()?->canManageCatalog() ?? false)) {
+        if (! $isPublished && (! $user instanceof User || ! Gate::forUser($user)->allows('viewMedia', $product))) {
             abort(404);
         }
 

@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\InventoryController;
 use App\Http\Controllers\Admin\OperationsController;
 use App\Http\Controllers\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Admin\ProductImageController;
+use App\Http\Controllers\Admin\SellerController as AdminSellerController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Middleware\EnsurePrivilegedMfa;
 use Illuminate\Support\Facades\Route;
@@ -21,6 +22,9 @@ Route::middleware(['auth', 'verified', 'can:manage-catalog', EnsurePrivilegedMfa
         Route::post('/products', [AdminCatalogController::class, 'store'])->name('products.store');
         Route::get('/products/{product}/edit', [AdminCatalogController::class, 'edit'])->name('products.edit');
         Route::patch('/products/{product}', [AdminCatalogController::class, 'update'])->name('products.update');
+        Route::patch('/products/{product}/moderate', [AdminCatalogController::class, 'moderate'])
+            ->whereNumber('product')
+            ->name('products.moderate');
         Route::delete('/products/{product}', [AdminCatalogController::class, 'destroy'])->name('products.destroy');
 
         Route::post('/products/{product}/images', [ProductImageController::class, 'store'])->name('products.images.store');
@@ -58,22 +62,44 @@ Route::middleware(['auth', 'verified', 'can:manage-operations', EnsurePrivileged
     ->name('admin.')
     ->group(function (): void {
         Route::get('/operations', [OperationsController::class, 'index'])->name('operations.index');
+    });
 
-        Route::prefix('orders')->name('orders.')->group(function (): void {
-            Route::get('/', [AdminOrderController::class, 'index'])->name('index');
-            Route::post('/bulk-transition', [AdminOrderController::class, 'bulkTransition'])->name('bulk-transition');
-            Route::get('/{order}', [AdminOrderController::class, 'show'])
-                ->whereNumber('order')
-                ->name('show');
-            Route::patch('/{order}/status', [AdminOrderController::class, 'updateStatus'])
-                ->whereNumber('order')
-                ->name('status.update');
-        });
+Route::middleware(['auth', 'verified', 'can:manage-orders', EnsurePrivilegedMfa::class])
+    ->prefix('admin/orders')
+    ->name('admin.orders.')
+    ->group(function (): void {
+        Route::get('/', [AdminOrderController::class, 'index'])->name('index');
+        Route::post('/bulk-transition', [AdminOrderController::class, 'bulkTransition'])->name('bulk-transition');
+        Route::get('/{order}', [AdminOrderController::class, 'show'])
+            ->whereNumber('order')
+            ->name('show');
+        Route::patch('/{order}/status', [AdminOrderController::class, 'updateStatus'])
+            ->whereNumber('order')
+            ->name('status.update');
+    });
 
-        Route::prefix('inventory')->name('inventory.')->group(function (): void {
-            Route::get('/', [InventoryController::class, 'index'])->name('index');
-            Route::post('/adjust', [InventoryController::class, 'adjust'])->name('adjust');
-            Route::post('/import', [InventoryController::class, 'importCsv'])->name('import');
-            Route::get('/template', [InventoryController::class, 'template'])->name('template');
-        });
+Route::middleware(['auth', 'verified', 'can:manage-inventory', EnsurePrivilegedMfa::class])
+    ->prefix('admin/inventory')
+    ->name('admin.inventory.')
+    ->group(function (): void {
+        Route::get('/', [InventoryController::class, 'index'])->name('index');
+        Route::post('/adjust', [InventoryController::class, 'adjust'])->name('adjust');
+        Route::post('/import', [InventoryController::class, 'importCsv'])->name('import');
+        Route::get('/template', [InventoryController::class, 'template'])->name('template');
+    });
+
+Route::middleware(['auth', 'verified', 'can:review-sellers', EnsurePrivilegedMfa::class])
+    ->prefix('admin/sellers')
+    ->name('admin.sellers.')
+    ->group(function (): void {
+        Route::get('/', [AdminSellerController::class, 'index'])->name('index');
+        Route::get('/{sellerProfile}', [AdminSellerController::class, 'show'])
+            ->whereNumber('sellerProfile')
+            ->name('show');
+        Route::patch('/{sellerProfile}/status', [AdminSellerController::class, 'transition'])
+            ->whereNumber('sellerProfile')
+            ->name('status.update');
+        Route::get('/{sellerProfile}/documents/{document}', [AdminSellerController::class, 'downloadDocument'])
+            ->whereNumber(['sellerProfile', 'document'])
+            ->name('documents.download');
     });

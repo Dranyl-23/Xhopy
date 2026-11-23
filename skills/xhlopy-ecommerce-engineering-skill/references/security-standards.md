@@ -3,7 +3,6 @@
 Use a risk-based approach and map controls to OWASP ASVS / OWASP Top 10 where relevant. Do not claim compliance or certification without a formal assessment.
 
 ## Identity and access
-
 - Hash passwords using a modern adaptive password hash supported by the framework (Argon2id or bcrypt with appropriate parameters).
 - Use framework-supported authentication/session mechanisms; do not invent cryptography.
 - Secure cookies: HttpOnly, Secure in production, and an appropriate SameSite policy.
@@ -15,7 +14,6 @@ Use a risk-based approach and map controls to OWASP ASVS / OWASP Top 10 where re
 - Require MFA for privileged accounts when supported/approved.
 
 ## Input, browser, and API protections
-
 - Use parameterized queries / ORM-safe query construction.
 - Encode output by context and sanitize only where rich HTML is intentionally supported.
 - Use CSRF protection for cookie-authenticated state-changing requests.
@@ -26,7 +24,6 @@ Use a risk-based approach and map controls to OWASP ASVS / OWASP Top 10 where re
 - Do not expose internal exception details in production.
 
 ## Payments and privacy
-
 - Use a compliant payment provider; avoid storing raw card numbers, CVV, or sensitive authentication data.
 - Verify payment webhooks cryptographically and prevent replay/duplicate processing.
 - Collect only necessary personal data and restrict staff access.
@@ -34,7 +31,6 @@ Use a risk-based approach and map controls to OWASP ASVS / OWASP Top 10 where re
 - Redact or minimize personal data in logs, analytics, and support exports.
 
 ## Operations
-
 - Store secrets in environment/secret management; rotate exposed credentials immediately.
 - Keep dependencies and runtimes patched; review lockfile and vulnerability reports.
 - Separate development, staging, and production credentials and data.
@@ -45,7 +41,6 @@ Use a risk-based approach and map controls to OWASP ASVS / OWASP Top 10 where re
 - Establish incident response steps for credential exposure, data breach, payment compromise, and service outage.
 
 ## Security review checklist
-
 - [ ] Authentication and session lifecycle reviewed.
 - [ ] Server-side authorization tested for customer/staff/admin roles.
 - [ ] Input validation and output encoding reviewed.
@@ -56,3 +51,13 @@ Use a risk-based approach and map controls to OWASP ASVS / OWASP Top 10 where re
 - [ ] SQL injection, XSS, IDOR, mass assignment, and privilege escalation tested.
 - [ ] Payment/webhook authenticity and idempotency verified.
 - [ ] Dependency and configuration risks reviewed.
+
+
+## Marketplace tenant isolation and privileged operations
+- Apply deny-by-default RBAC and resource-level authorization on the server for Super Admin, Admin Staff, Seller, and Customer roles.
+- Treat seller/store ownership as a tenant boundary. Never authorize using a client-supplied `seller_id`/`store_id` alone. Test IDOR/BOLA across every seller-scoped resource and customer-owned resource.
+- Seller onboarding approval, rejection, suspension/reactivation, commission changes, refunds, payout approvals/execution, staff role changes, and sensitive settings changes require explicit permissions and immutable/auditable actor and outcome records.
+- Pending, rejected, and suspended sellers must be blocked from publishing, accepting new sales, and other active seller operations according to approved policy; do not erase their historical orders or liabilities.
+- Protect seller verification documents and private customer information with private storage, least-privilege access, expiring access links where suitable, and retention rules approved by the owner.
+- Protect payment and payout webhooks with signature verification, replay/duplicate protection, idempotency, and reconciliation. Never allow browser-side status changes to confirm payment or payout.
+- Use step-up authentication or dual approval for high-risk financial actions where supported and approved.

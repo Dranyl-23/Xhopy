@@ -16,6 +16,19 @@ export interface BrandSummary {
     description?: string | null;
 }
 
+export interface StoreSummary {
+    id: number;
+    name: string;
+    slug: string;
+    url: string;
+    isOfficial: boolean;
+    logoUrl: string | null;
+    description: string | null;
+    status: string;
+    statusLabel: string;
+    productCount: number;
+}
+
 export interface ProductSummary {
     id: number | string;
     name: string;
@@ -26,6 +39,10 @@ export interface ProductSummary {
     categorySlug?: string | null;
     brandName?: string | null;
     brandSlug?: string | null;
+    storeId?: number | null;
+    storeSlug?: string | null;
+    storeUrl?: string | null;
+    isOfficialStore?: boolean;
     sellerName?: string | null;
     unitPrice: number;
     priceFormatted: string;
@@ -92,6 +109,7 @@ export interface CatalogFilters {
     q: string;
     category: string | null;
     brand: string | null;
+    store?: string | null;
     min_price: string;
     max_price: string;
     in_stock: boolean;
@@ -100,6 +118,27 @@ export interface CatalogFilters {
 }
 
 export interface CatalogIndexProps {
+    products: ProductSummary[];
+    pagination: PaginationMeta;
+    categories: CategorySummary[];
+    brands: BrandSummary[];
+    stores?: StoreSummary[];
+    sortOptions: SortOption[];
+    filters: CatalogFilters;
+    cartSummary: CartSummary;
+}
+
+export interface StorefrontStoresIndexProps {
+    stores: StoreSummary[];
+    categories: CategorySummary[];
+    filters: {
+        q: string;
+    };
+    cartSummary: CartSummary;
+}
+
+export interface StorefrontStoreShowProps {
+    store: StoreSummary;
     products: ProductSummary[];
     pagination: PaginationMeta;
     categories: CategorySummary[];

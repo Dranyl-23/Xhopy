@@ -4,11 +4,12 @@ namespace App\Domain\Catalog\Services;
 
 use App\Domain\Catalog\Enums\CampaignPlacement;
 use App\Domain\Catalog\Enums\CatalogSort;
-use App\Domain\Catalog\Enums\ProductStatus;
 use App\Domain\Catalog\Models\Brand;
 use App\Domain\Catalog\Models\CampaignContent;
 use App\Domain\Catalog\Models\Category;
 use App\Domain\Catalog\Models\Product;
+use App\Domain\Seller\Enums\StoreStatus;
+use App\Domain\Seller\Models\Store;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -32,7 +33,7 @@ final class CatalogQueryService
         $categories = Category::query()
             ->active()
             ->withCount([
-                'products' => fn (Builder $query): Builder => $query->where('status', ProductStatus::Active->value),
+                'products' => fn (Builder $query): Builder => Product::applyActiveCategoryCountFilter($query),
             ])
             ->orderBy('sort_order')
             ->orderBy('name')
@@ -95,10 +96,55 @@ final class CatalogQueryService
     }
 
     /**
+     * @return list<array<string, mixed>>
+     */
+    public function activeCategories(): array
+    {
+        $categories = Category::query()
+            ->active()
+            ->withCount([
+                'products' => fn (Builder $query): Builder => Product::applyActiveCategoryCountFilter($query),
+            ])
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+
+        return array_values($categories->map(fn (Category $category): array => $this->presenter->categorySummary($category))->all());
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function listActiveStores(string $searchQuery = ''): array
+    {
+        $query = Store::query()
+            ->where('status', StoreStatus::Active->value)
+            ->withCount([
+                'products as published_products_count' => fn (Builder $prodQuery): Builder => Product::applyActiveCategoryCountFilter($prodQuery),
+            ])
+            ->orderByDesc('is_official')
+            ->orderBy('name');
+
+        if ($searchQuery !== '') {
+            $escaped = str_replace(['!', '%', '_'], ['!!', '!%', '!_'], mb_strtolower($searchQuery));
+            $term = "%{$escaped}%";
+            $query->where(function (Builder $sub) use ($term): void {
+                $sub->whereRaw("LOWER(name) LIKE ? ESCAPE '!'", [$term])
+                    ->orWhereRaw("LOWER(COALESCE(description, '')) LIKE ? ESCAPE '!'", [$term]);
+            });
+        }
+
+        return array_values(
+            $query->get()->map(fn (Store $store): array => $this->presenter->storeSummary($store))->all(),
+        );
+    }
+
+    /**
      * @param  array{
      *     q?: string|null,
      *     category?: string|null,
      *     brand?: string|null,
+     *     store?: string|null,
      *     min_price?: float|int|string|null,
      *     max_price?: float|int|string|null,
      *     in_stock?: bool,
@@ -114,6 +160,7 @@ final class CatalogQueryService
         $searchQuery = trim((string) ($filters['q'] ?? ''));
         $categorySlug = isset($filters['category']) ? trim((string) $filters['category']) : null;
         $brandSlug = isset($filters['brand']) ? trim((string) $filters['brand']) : null;
+        $storeSlug = isset($filters['store']) ? trim((string) $filters['store']) : null;
         $inStockOnly = (bool) ($filters['in_stock'] ?? false);
         $sort = CatalogSort::tryFrom((string) ($filters['sort'] ?? '')) ?? CatalogSort::Featured;
         $perPage = in_array((int) ($filters['per_page'] ?? 12), [12, 24, 48], true)
@@ -134,6 +181,18 @@ final class CatalogQueryService
                 $query->whereRaw('1 = 0');
             } else {
                 $query->where('products.brand_id', $brandId);
+            }
+        }
+
+        if ($storeSlug !== null && $storeSlug !== '') {
+            $storeId = Store::query()
+                ->where('status', StoreStatus::Active->value)
+                ->where('slug', $storeSlug)
+                ->value('id');
+            if ($storeId === null) {
+                $query->whereRaw('1 = 0');
+            } else {
+                $query->where('products.store_id', $storeId);
             }
         }
 
@@ -161,15 +220,6 @@ final class CatalogQueryService
 
         $paginator = $query->paginate($perPage)->withQueryString();
 
-        $categories = Category::query()
-            ->active()
-            ->withCount([
-                'products' => fn (Builder $catProdQuery): Builder => $catProdQuery->where('status', ProductStatus::Active->value),
-            ])
-            ->orderBy('sort_order')
-            ->orderBy('name')
-            ->get();
-
         $brands = Brand::query()
             ->active()
             ->orderBy('name')
@@ -185,13 +235,15 @@ final class CatalogQueryService
                 'perPage' => $paginator->perPage(),
                 'total' => $paginator->total(),
             ],
-            'categories' => $categories->map(fn (Category $category): array => $this->presenter->categorySummary($category))->all(),
+            'categories' => $this->activeCategories(),
             'brands' => $brands->map(fn (Brand $brand): array => $this->presenter->brandSummary($brand))->all(),
+            'stores' => $this->listActiveStores(),
             'sortOptions' => CatalogSort::options(),
             'filters' => [
                 'q' => $searchQuery,
                 'category' => $categorySlug ?: null,
                 'brand' => $brandSlug ?: null,
+                'store' => $storeSlug ?: null,
                 'min_price' => isset($filters['min_price']) && $filters['min_price'] !== '' ? (string) $filters['min_price'] : '',
                 'max_price' => isset($filters['max_price']) && $filters['max_price'] !== '' ? (string) $filters['max_price'] : '',
                 'in_stock' => $inStockOnly,
@@ -242,6 +294,7 @@ final class CatalogQueryService
             ->with([
                 'category',
                 'brand',
+                'store',
                 'variants' => function (HasMany $variantQuery): void {
                     $variantQuery->where('is_active', true)->orderBy('sort_order')->orderBy('id');
                 },

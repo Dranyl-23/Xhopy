@@ -1,6 +1,9 @@
 <script setup lang="ts">
-import { Head, Link, usePage } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import {
+    Building2,
+    CreditCard,
+    Heart,
     History,
     KeyRound,
     MapPin,
@@ -13,6 +16,7 @@ import {
     Users,
 } from '@lucide/vue';
 import { computed } from 'vue';
+import EmptyState from '@shared/components/EmptyState.vue';
 import { Badge } from '@shared/components/ui/badge';
 import { Button } from '@shared/components/ui/button';
 import {
@@ -28,12 +32,18 @@ import { index as adminCatalogIndex } from '@/routes/admin/catalog';
 import { index as adminInventoryIndex } from '@/routes/admin/inventory';
 import { index as adminOperationsIndex } from '@/routes/admin/operations';
 import { index as adminOrdersIndex } from '@/routes/admin/orders';
+import { index as adminSellersIndex } from '@/routes/admin/sellers';
 import { index as adminUsersIndex } from '@/routes/admin/users';
 import { index as cartIndex } from '@/routes/cart';
 import { index as catalogIndex } from '@/routes/catalog';
-import { index as ordersIndex } from '@/routes/orders';
+import { index as ordersIndex, show as orderShow } from '@/routes/orders';
 import { edit as profileEdit } from '@/routes/profile';
 import { edit as securityEdit } from '@/routes/security';
+import {
+    dashboard as sellerDashboard,
+    onboarding as sellerOnboarding,
+} from '@/routes/seller';
+import { index as wishlistIndex } from '@/routes/wishlist';
 import type { AccountDashboardSummary } from '@modules/account/types';
 
 defineProps<{
@@ -77,14 +87,21 @@ const user = computed(() => page.props.auth.user);
                 </p>
             </div>
 
-            <div class="flex flex-wrap gap-2">
-                <Button as-child variant="outline" class="h-10 gap-2">
+            <div class="flex flex-wrap gap-2.5">
+                <Button
+                    as-child
+                    variant="outline"
+                    class="h-10 min-w-[144px] justify-center gap-2"
+                >
                     <Link :href="home()">
                         <Store class="size-4" aria-hidden="true" />
                         <span>Storefront</span>
                     </Link>
                 </Button>
-                <Button as-child class="h-10 gap-2">
+                <Button
+                    as-child
+                    class="h-10 min-w-[144px] justify-center gap-2"
+                >
                     <Link :href="catalogIndex()">
                         <ShoppingBag class="size-4" aria-hidden="true" />
                         <span>Browse Catalog</span>
@@ -118,8 +135,8 @@ const user = computed(() => page.props.auth.user);
             </Button>
         </div>
 
-        <div class="grid gap-4 md:grid-cols-3">
-            <Card>
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Card class="flex h-full flex-col">
                 <CardHeader class="pb-2">
                     <CardDescription>Account Security</CardDescription>
                     <CardTitle class="flex items-center gap-2 text-lg">
@@ -142,7 +159,9 @@ const user = computed(() => page.props.auth.user);
                         </span>
                     </CardTitle>
                 </CardHeader>
-                <CardContent class="space-y-3 text-sm text-muted-foreground">
+                <CardContent
+                    class="flex flex-1 flex-col justify-between gap-4 text-sm text-muted-foreground"
+                >
                     <p>
                         Email status:
                         <span class="font-medium text-foreground">
@@ -153,20 +172,18 @@ const user = computed(() => page.props.auth.user);
                             }}
                         </span>
                     </p>
-                    <div class="flex flex-wrap gap-2">
+                    <div class="mt-auto flex flex-col gap-2">
                         <Button
                             as-child
                             variant="outline"
-                            size="sm"
-                            class="h-9"
+                            class="h-10 w-full justify-center"
                         >
                             <Link :href="profileEdit()">Edit Profile</Link>
                         </Button>
                         <Button
                             as-child
                             variant="outline"
-                            size="sm"
-                            class="h-9"
+                            class="h-10 w-full justify-center"
                         >
                             <Link :href="securityEdit()"
                                 >Security &amp; Sessions</Link
@@ -176,7 +193,7 @@ const user = computed(() => page.props.auth.user);
                 </CardContent>
             </Card>
 
-            <Card>
+            <Card class="flex h-full flex-col">
                 <CardHeader class="pb-2">
                     <CardDescription>Address Book</CardDescription>
                     <CardTitle class="flex items-center gap-2 text-lg">
@@ -194,7 +211,9 @@ const user = computed(() => page.props.auth.user);
                         </span>
                     </CardTitle>
                 </CardHeader>
-                <CardContent class="space-y-3 text-sm text-muted-foreground">
+                <CardContent
+                    class="flex flex-1 flex-col justify-between gap-4 text-sm text-muted-foreground"
+                >
                     <p v-if="accountSummary.defaultShippingAddress">
                         Default shipping:
                         <span class="font-medium text-foreground">
@@ -205,17 +224,22 @@ const user = computed(() => page.props.auth.user);
                             }}
                         </span>
                     </p>
-                    <p v-else>
-                        Add a shipping address for faster checkout in upcoming
-                        batches.
-                    </p>
-                    <Button as-child variant="outline" size="sm" class="h-9">
-                        <Link :href="addressesIndex()">Manage Addresses</Link>
-                    </Button>
+                    <p v-else>Add a shipping address for faster checkout.</p>
+                    <div class="mt-auto flex flex-col gap-2">
+                        <Button
+                            as-child
+                            variant="outline"
+                            class="h-10 w-full justify-center"
+                        >
+                            <Link :href="addressesIndex()"
+                                >Manage Addresses</Link
+                            >
+                        </Button>
+                    </div>
                 </CardContent>
             </Card>
 
-            <Card>
+            <Card class="flex h-full flex-col">
                 <CardHeader class="pb-2">
                     <CardDescription>Orders &amp; Checkout</CardDescription>
                     <CardTitle class="flex items-center gap-2 text-lg">
@@ -233,13 +257,18 @@ const user = computed(() => page.props.auth.user);
                         </span>
                     </CardTitle>
                 </CardHeader>
-                <CardContent class="space-y-3 text-sm text-muted-foreground">
+                <CardContent
+                    class="flex flex-1 flex-col justify-between gap-4 text-sm text-muted-foreground"
+                >
                     <p>
                         Track PayMongo payment confirmations, order status
                         history, and active shopping cart items.
                     </p>
-                    <div class="flex flex-wrap gap-2">
-                        <Button as-child size="sm" class="h-9 gap-1.5">
+                    <div class="mt-auto flex flex-col gap-2">
+                        <Button
+                            as-child
+                            class="h-10 w-full justify-center gap-1.5"
+                        >
                             <Link :href="ordersIndex()">
                                 <span>View My Orders</span>
                                 <Badge
@@ -259,10 +288,47 @@ const user = computed(() => page.props.auth.user);
                         <Button
                             as-child
                             variant="outline"
-                            size="sm"
-                            class="h-9"
+                            class="h-10 w-full justify-center"
                         >
                             <Link :href="cartIndex()">Open Cart</Link>
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
+
+            <Card class="flex h-full flex-col">
+                <CardHeader class="pb-2">
+                    <CardDescription>Wishlist &amp; Spend</CardDescription>
+                    <CardTitle class="flex items-center gap-2 text-lg">
+                        <Heart class="size-5 text-primary" aria-hidden="true" />
+                        <span>
+                            {{ accountSummary.wishlistCount ?? 0 }}
+                            {{
+                                (accountSummary.wishlistCount ?? 0) === 1
+                                    ? 'Saved Item'
+                                    : 'Saved Items'
+                            }}
+                        </span>
+                    </CardTitle>
+                </CardHeader>
+                <CardContent
+                    class="flex flex-1 flex-col justify-between gap-4 text-sm text-muted-foreground"
+                >
+                    <p>
+                        Verified paid spend:
+                        <span
+                            class="font-semibold text-foreground tabular-nums"
+                        >
+                            {{ accountSummary.totalSpentFormatted ?? '₱0.00' }}
+                        </span>
+                    </p>
+                    <div class="mt-auto flex flex-col gap-2">
+                        <Button
+                            as-child
+                            variant="outline"
+                            class="h-10 w-full justify-center"
+                        >
+                            <Link :href="wishlistIndex()">Open Wishlist</Link>
                         </Button>
                     </div>
                 </CardContent>
@@ -271,7 +337,7 @@ const user = computed(() => page.props.auth.user);
 
         <Card
             v-if="
-                page.props.auth?.canManageCatalog ||
+                page.props.auth?.canAccessAdmin ||
                 page.props.auth?.canManageUsers
             "
         >
@@ -297,7 +363,7 @@ const user = computed(() => page.props.auth.user);
                     >
                 </Button>
                 <Button
-                    v-if="page.props.auth?.canManageOperations"
+                    v-if="page.props.auth?.canManageOrders"
                     as-child
                     variant="outline"
                     size="sm"
@@ -306,7 +372,7 @@ const user = computed(() => page.props.auth.user);
                     <Link :href="adminOrdersIndex()">Admin Orders</Link>
                 </Button>
                 <Button
-                    v-if="page.props.auth?.canManageOperations"
+                    v-if="page.props.auth?.canManageInventory"
                     as-child
                     variant="outline"
                     size="sm"
@@ -324,6 +390,18 @@ const user = computed(() => page.props.auth.user);
                     <Link :href="adminCatalogIndex()">Catalog Admin</Link>
                 </Button>
                 <Button
+                    v-if="page.props.auth?.canReviewSellers"
+                    as-child
+                    variant="outline"
+                    size="sm"
+                    class="h-9 gap-1.5"
+                >
+                    <Link :href="adminSellersIndex()">
+                        <Building2 class="size-3.5" aria-hidden="true" />
+                        <span>Seller Applications</span>
+                    </Link>
+                </Button>
+                <Button
                     v-if="page.props.auth?.canManageUsers"
                     as-child
                     variant="outline"
@@ -338,6 +416,210 @@ const user = computed(() => page.props.auth.user);
                 <Button as-child variant="outline" size="sm" class="h-9">
                     <Link :href="catalogIndex()">Explore Catalog</Link>
                 </Button>
+            </CardContent>
+        </Card>
+
+        <Card v-else>
+            <CardHeader class="pb-2">
+                <CardDescription>Marketplace Seller Portal</CardDescription>
+                <CardTitle class="flex items-center gap-2 text-lg">
+                    <Building2 class="size-5 text-primary" aria-hidden="true" />
+                    <span>{{
+                        page.props.auth?.isApprovedSeller
+                            ? 'Your Seller Workspace is Active'
+                            : page.props.auth?.isSeller
+                              ? 'Seller Application Status'
+                              : 'Sell Your Products on XHopy'
+                    }}</span>
+                </CardTitle>
+            </CardHeader>
+            <CardContent
+                class="flex flex-wrap items-center justify-between gap-3"
+            >
+                <p class="max-w-2xl text-sm text-muted-foreground">
+                    {{
+                        page.props.auth?.isApprovedSeller
+                            ? 'Manage your approved store workspace, monitor stock alerts, and track fulfillment lines.'
+                            : page.props.auth?.isSeller
+                              ? 'Review your submitted store profile, upload verification documents, or check Super Admin approval status.'
+                              : 'Apply for an independent storefront, submit business verification documents, and unlock your seller workspace once approved.'
+                    }}
+                </p>
+                <div class="flex flex-wrap gap-2">
+                    <Button
+                        v-if="page.props.auth?.isApprovedSeller"
+                        as-child
+                        size="sm"
+                        class="h-10"
+                    >
+                        <Link :href="sellerDashboard()"
+                            >Open Seller Dashboard</Link
+                        >
+                    </Button>
+                    <Button
+                        as-child
+                        :variant="
+                            page.props.auth?.isApprovedSeller
+                                ? 'outline'
+                                : 'default'
+                        "
+                        size="sm"
+                        class="h-10"
+                    >
+                        <Link :href="sellerOnboarding()">{{
+                            page.props.auth?.isSeller
+                                ? 'Store & Verification'
+                                : 'Become a Seller'
+                        }}</Link>
+                    </Button>
+                </div>
+            </CardContent>
+        </Card>
+
+        <Card>
+            <CardHeader
+                class="flex flex-row items-center justify-between gap-4"
+            >
+                <div>
+                    <CardTitle class="flex items-center gap-2 text-base">
+                        <ReceiptText
+                            class="size-4 text-primary"
+                            aria-hidden="true"
+                        />
+                        <span>Recent Orders</span>
+                    </CardTitle>
+                    <CardDescription>
+                        Your latest checkouts, payment statuses, and shipment
+                        updates.
+                    </CardDescription>
+                </div>
+                <Button as-child variant="outline" size="sm" class="h-9">
+                    <Link :href="ordersIndex()">All Orders</Link>
+                </Button>
+            </CardHeader>
+            <CardContent>
+                <EmptyState
+                    v-if="
+                        !accountSummary.recentOrders ||
+                        accountSummary.recentOrders.length === 0
+                    "
+                    :icon="ReceiptText"
+                    title="No recent orders"
+                    description="Browse the verified XHopy catalog to place your first order and track live delivery status here."
+                    action-label="Browse Catalog"
+                    @action="router.get(catalogIndex.url())"
+                />
+                <ul v-else class="divide-y divide-border">
+                    <li
+                        v-for="order in accountSummary.recentOrders"
+                        :key="order.id"
+                        class="flex flex-wrap items-center justify-between gap-3 py-3 text-sm"
+                    >
+                        <div class="space-y-0.5">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="font-semibold text-foreground">{{
+                                    order.order_number
+                                }}</span>
+                                <Badge variant="secondary">{{
+                                    order.status_label
+                                }}</Badge>
+                                <Badge variant="outline">{{
+                                    order.payment_status_label
+                                }}</Badge>
+                            </div>
+                            <p class="text-xs text-muted-foreground">
+                                Placed {{ order.placed_at_diff }} ·
+                                {{ order.items_count }}
+                                {{ order.items_count === 1 ? 'item' : 'items' }}
+                            </p>
+                        </div>
+
+                        <div class="flex items-center gap-3">
+                            <span
+                                class="font-bold text-foreground tabular-nums"
+                                >{{ order.total_formatted }}</span
+                            >
+                            <Button
+                                as-child
+                                variant="ghost"
+                                size="sm"
+                                class="h-9"
+                            >
+                                <Link :href="orderShow(order.id)">View</Link>
+                            </Button>
+                        </div>
+                    </li>
+                </ul>
+            </CardContent>
+        </Card>
+
+        <Card>
+            <CardHeader>
+                <CardTitle class="flex items-center gap-2 text-base">
+                    <CreditCard
+                        class="size-4 text-primary"
+                        aria-hidden="true"
+                    />
+                    <span>Recent Payments</span>
+                </CardTitle>
+                <CardDescription>
+                    Server-verified payment records across your XHopy orders.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <EmptyState
+                    v-if="
+                        !accountSummary.recentPayments ||
+                        accountSummary.recentPayments.length === 0
+                    "
+                    :icon="CreditCard"
+                    title="No payment transactions yet"
+                    description="PayMongo payment confirmations and receipts for your orders will appear here."
+                />
+                <ul v-else class="divide-y divide-border">
+                    <li
+                        v-for="payment in accountSummary.recentPayments"
+                        :key="payment.id"
+                        class="flex flex-wrap items-center justify-between gap-3 py-3 text-sm"
+                    >
+                        <div class="space-y-0.5">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="font-semibold text-foreground">{{
+                                    payment.order_number
+                                }}</span>
+                                <Badge variant="outline">{{
+                                    payment.status_label
+                                }}</Badge>
+                            </div>
+                            <p class="text-xs text-muted-foreground">
+                                {{ payment.provider }}
+                                <span v-if="payment.payment_method_type">
+                                    · {{ payment.payment_method_type }}</span
+                                >
+                                <span v-if="payment.activity_at_diff">
+                                    · {{ payment.activity_at_diff }}</span
+                                >
+                            </p>
+                        </div>
+
+                        <div class="flex items-center gap-3">
+                            <span
+                                class="font-bold text-foreground tabular-nums"
+                                >{{ payment.amount_formatted }}</span
+                            >
+                            <Button
+                                as-child
+                                variant="ghost"
+                                size="sm"
+                                class="h-9"
+                            >
+                                <Link :href="orderShow(payment.order_id)">
+                                    View
+                                </Link>
+                            </Button>
+                        </div>
+                    </li>
+                </ul>
             </CardContent>
         </Card>
 

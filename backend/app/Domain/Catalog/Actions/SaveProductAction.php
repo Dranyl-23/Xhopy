@@ -5,6 +5,7 @@ namespace App\Domain\Catalog\Actions;
 use App\Domain\Catalog\Enums\ProductStatus;
 use App\Domain\Catalog\Models\Product;
 use App\Domain\Catalog\Models\ProductVariant;
+use App\Domain\Seller\Models\Store;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -33,16 +34,43 @@ final class SaveProductAction
             $stockQuantity = max(0, (int) ($data['stock_quantity'] ?? 0));
 
             $target = $product ?? new Product;
+
+            $rawStoreId = $data['store_id'] ?? $target->store_id ?? Store::query()->where('is_official', true)->value('id');
+            $storeId = is_numeric($rawStoreId) && (int) $rawStoreId > 0 ? (int) $rawStoreId : null;
+
+            $storeName = null;
+            if ($storeId !== null) {
+                $rawStoreName = Store::query()->whereKey($storeId)->value('name');
+                if (is_string($rawStoreName) && trim($rawStoreName) !== '') {
+                    $storeName = trim($rawStoreName);
+                }
+            }
+
+            $sellerName = trim((string) ($data['seller_name'] ?? ''));
+            if ($sellerName === '') {
+                $sellerName = $storeName ?? 'XHopy Official';
+            }
+
+            $submittedForReviewAt = $status === ProductStatus::PendingReview
+                ? now()
+                : $target->submitted_for_review_at;
+
+            $moderationNotes = in_array($status, [ProductStatus::Active, ProductStatus::PendingReview], true)
+                ? null
+                : $target->moderation_notes;
+
             $target->fill([
                 'category_id' => (int) $data['category_id'],
                 'brand_id' => isset($data['brand_id']) && $data['brand_id'] !== '' ? (int) $data['brand_id'] : null,
-                'seller_name' => trim((string) ($data['seller_name'] ?? 'XHopy Official')) ?: 'XHopy Official',
+                'store_id' => $storeId,
+                'seller_name' => $sellerName,
                 'name' => trim((string) $data['name']),
                 'slug' => $slug,
                 'sku' => strtoupper(trim((string) $data['sku'])),
                 'short_description' => isset($data['short_description']) ? trim((string) $data['short_description']) : null,
                 'description' => isset($data['description']) ? trim((string) $data['description']) : null,
                 'status' => $status,
+                'moderation_notes' => $moderationNotes,
                 'is_featured' => (bool) ($data['is_featured'] ?? false),
                 'currency' => strtoupper((string) ($data['currency'] ?? 'PHP')),
                 'base_price' => $basePrice,
@@ -52,6 +80,7 @@ final class SaveProductAction
                 'published_at' => $status === ProductStatus::Active
                     ? ($target->published_at ?? now())
                     : $target->published_at,
+                'submitted_for_review_at' => $submittedForReviewAt,
             ]);
             $target->save();
 

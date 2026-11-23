@@ -1,9 +1,10 @@
 import type { DefineComponent } from 'vue';
 import { createInertiaApp } from '@inertiajs/vue3';
-import AuthLayout from '@modules/account/layouts/AuthLayout.vue';
-import SettingsLayout from '@modules/account/layouts/SettingsLayout.vue';
+import { AuthLayout, CustomerLayout } from '@modules/account';
+import { AdminLayout } from '@modules/admin';
+import { SellerLayout } from '@modules/seller';
 import { initializeTheme } from '@shared/composables/useAppearance';
-import AppLayout from '@shared/layouts/AppLayout.vue';
+import PortalSettingsLayout from './layouts/PortalSettingsLayout.vue';
 import { initializeFlashToast } from '@shared/lib/flashToast';
 
 const appName = import.meta.env.VITE_APP_NAME || 'XHopy';
@@ -31,17 +32,23 @@ void createInertiaApp({
     layout: (name) => {
         switch (true) {
             case name === 'Welcome':
+            case name === 'Error':
             case name.startsWith('storefront/'):
             case name.startsWith('catalog/'):
+            case name.startsWith('stores/'):
             case name.startsWith('cart/'):
             case name.startsWith('checkout/'):
                 return null;
             case name.startsWith('auth/'):
                 return AuthLayout;
+            case name.startsWith('admin/'):
+                return AdminLayout;
+            case name.startsWith('seller/'):
+                return SellerLayout;
             case name.startsWith('settings/'):
-                return [AppLayout, SettingsLayout];
+                return PortalSettingsLayout;
             default:
-                return AppLayout;
+                return CustomerLayout;
         }
     },
     withApp: (app) => {
@@ -58,8 +65,5 @@ void createInertiaApp({
     },
 });
 
-// This will set light / dark mode on page load...
 initializeTheme();
-
-// This will listen for flash toast data from the server...
 initializeFlashToast();

@@ -32,6 +32,25 @@ class AuthenticationTest extends TestCase
         $response->assertRedirect(route('dashboard', absolute: false));
     }
 
+    public function test_staff_and_admin_users_redirect_to_operations_dashboard_by_default()
+    {
+        $staff = User::factory()->staff()->create();
+
+        $this->post(route('login.store'), [
+            'email' => $staff->email,
+            'password' => 'password',
+        ])->assertRedirect(route('admin.operations.index', absolute: false));
+
+        $this->post(route('logout'));
+
+        $admin = User::factory()->admin()->create();
+
+        $this->post(route('login.store'), [
+            'email' => $admin->email,
+            'password' => 'password',
+        ])->assertRedirect(route('admin.operations.index', absolute: false));
+    }
+
     public function test_users_with_two_factor_enabled_are_redirected_to_two_factor_challenge()
     {
         $this->skipUnlessFortifyHas(Features::twoFactorAuthentication());

@@ -6,6 +6,7 @@ import {
     Package,
     ShieldCheck,
     ShoppingBag,
+    Store,
     Trash2,
 } from '@lucide/vue';
 import { ref } from 'vue';
@@ -177,104 +178,175 @@ function clearCart(): void {
                 v-if="cart.items.length > 0"
                 class="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-12"
             >
-                <!-- Line Items -->
-                <div class="space-y-4 lg:col-span-8">
-                    <article
-                        v-for="item in cart.items"
-                        :key="item.id"
-                        class="flex flex-col gap-4 rounded-2xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5"
+                <!-- Line Items Grouped by Seller Store -->
+                <div class="space-y-5 lg:col-span-8">
+                    <section
+                        v-for="group in cart.sellerGroups"
+                        :key="`${group.storeId ?? 'store'}-${group.storeName}`"
+                        :aria-label="`Items from ${group.storeName}`"
+                        class="overflow-hidden rounded-2xl border border-border bg-card"
                     >
-                        <div class="flex min-w-0 flex-1 items-start gap-4">
-                            <Link
-                                :href="item.productUrl"
-                                class="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-secondary/40"
+                        <header
+                            class="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-secondary/35 px-4 py-3 sm:px-5"
+                        >
+                            <div
+                                class="flex min-w-0 flex-wrap items-center gap-2"
                             >
-                                <img
-                                    v-if="item.imageUrl"
-                                    :src="item.imageUrl"
-                                    :alt="item.imageAlt"
-                                    class="size-full object-cover"
-                                />
-                                <Package
-                                    v-else
-                                    class="size-6 text-muted-foreground"
+                                <Store
+                                    class="size-4 shrink-0 text-primary"
                                     aria-hidden="true"
                                 />
-                            </Link>
-
-                            <div class="min-w-0 flex-1 space-y-1">
                                 <Link
-                                    :href="item.productUrl"
-                                    class="block truncate text-base font-semibold text-foreground hover:text-primary"
+                                    v-if="group.storeUrl"
+                                    :href="group.storeUrl"
+                                    class="truncate text-sm font-bold text-foreground transition-colors hover:text-primary"
                                 >
-                                    {{ item.productName }}
+                                    {{ group.storeName }}
                                 </Link>
-
-                                <div
-                                    class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground"
+                                <span
+                                    v-else
+                                    class="truncate text-sm font-bold text-foreground"
                                 >
-                                    <span v-if="item.variantTitle"
-                                        >Variant: {{ item.variantTitle }}</span
+                                    {{ group.storeName }}
+                                </span>
+                                <Badge
+                                    v-if="group.isOfficialStore"
+                                    variant="default"
+                                    class="px-1.5 py-0.5 text-[10px] tracking-wide uppercase"
+                                >
+                                    Official
+                                </Badge>
+                                <Badge
+                                    v-else
+                                    variant="secondary"
+                                    class="px-1.5 py-0.5 text-[10px] tracking-wide uppercase"
+                                >
+                                    Verified Store
+                                </Badge>
+                            </div>
+
+                            <div
+                                class="flex items-center gap-3 text-xs text-muted-foreground"
+                            >
+                                <span>
+                                    {{ group.itemCount }}
+                                    {{
+                                        group.itemCount === 1 ? 'item' : 'items'
+                                    }}
+                                </span>
+                                <span
+                                    class="font-semibold text-foreground tabular-nums"
+                                >
+                                    Store Subtotal:
+                                    {{ group.subtotalFormatted }}
+                                </span>
+                            </div>
+                        </header>
+
+                        <div class="divide-y divide-border">
+                            <article
+                                v-for="item in group.items"
+                                :key="item.id"
+                                class="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5"
+                            >
+                                <div
+                                    class="flex min-w-0 flex-1 items-start gap-4"
+                                >
+                                    <Link
+                                        :href="item.productUrl"
+                                        class="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-secondary/40"
                                     >
-                                    <span>SKU: {{ item.sku }}</span>
-                                    <span>Sold by {{ item.sellerName }}</span>
+                                        <img
+                                            v-if="item.imageUrl"
+                                            :src="item.imageUrl"
+                                            :alt="item.imageAlt"
+                                            class="size-full object-cover"
+                                        />
+                                        <Package
+                                            v-else
+                                            class="size-6 text-muted-foreground"
+                                            aria-hidden="true"
+                                        />
+                                    </Link>
+
+                                    <div class="min-w-0 flex-1 space-y-1">
+                                        <Link
+                                            :href="item.productUrl"
+                                            class="block truncate text-base font-semibold text-foreground hover:text-primary"
+                                        >
+                                            {{ item.productName }}
+                                        </Link>
+
+                                        <div
+                                            class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground"
+                                        >
+                                            <span v-if="item.variantTitle"
+                                                >Variant:
+                                                {{ item.variantTitle }}</span
+                                            >
+                                            <span>SKU: {{ item.sku }}</span>
+                                        </div>
+
+                                        <p
+                                            class="text-sm font-medium text-foreground tabular-nums"
+                                        >
+                                            {{ item.unitPriceFormatted }} each
+                                        </p>
+
+                                        <p
+                                            v-if="
+                                                !item.isAvailable &&
+                                                item.availabilityNote
+                                            "
+                                            class="text-xs font-medium text-destructive"
+                                        >
+                                            {{ item.availabilityNote }}
+                                        </p>
+                                    </div>
                                 </div>
 
-                                <p
-                                    class="text-sm font-medium text-foreground tabular-nums"
+                                <div
+                                    class="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-3 sm:justify-end sm:border-t-0 sm:pt-0"
                                 >
-                                    {{ item.unitPriceFormatted }} each
-                                </p>
+                                    <QuantitySelector
+                                        :model-value="item.quantity"
+                                        :min="1"
+                                        :max="Math.max(1, item.maxQuantity)"
+                                        :disabled="
+                                            processingItemId === item.id ||
+                                            item.maxQuantity === 0
+                                        "
+                                        @update:model-value="
+                                            updateItemQuantity(item, $event)
+                                        "
+                                    />
 
-                                <p
-                                    v-if="
-                                        !item.isAvailable &&
-                                        item.availabilityNote
-                                    "
-                                    class="text-xs font-medium text-destructive"
-                                >
-                                    {{ item.availabilityNote }}
-                                </p>
-                            </div>
+                                    <div class="min-w-24 text-right">
+                                        <p
+                                            class="text-base font-bold text-foreground tabular-nums"
+                                        >
+                                            {{ item.lineTotalFormatted }}
+                                        </p>
+                                    </div>
+
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        class="size-11 text-muted-foreground hover:text-destructive"
+                                        :disabled="processingItemId === item.id"
+                                        :aria-label="`Remove ${item.productName}`"
+                                        @click="removeItem(item)"
+                                    >
+                                        <Trash2
+                                            class="size-4"
+                                            aria-hidden="true"
+                                        />
+                                    </Button>
+                                </div>
+                            </article>
                         </div>
-
-                        <div
-                            class="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-3 sm:justify-end sm:border-t-0 sm:pt-0"
-                        >
-                            <QuantitySelector
-                                :model-value="item.quantity"
-                                :min="1"
-                                :max="Math.max(1, item.maxQuantity)"
-                                :disabled="
-                                    processingItemId === item.id ||
-                                    item.maxQuantity === 0
-                                "
-                                @update:model-value="
-                                    updateItemQuantity(item, $event)
-                                "
-                            />
-
-                            <div class="min-w-24 text-right">
-                                <p
-                                    class="text-base font-bold text-foreground tabular-nums"
-                                >
-                                    {{ item.lineTotalFormatted }}
-                                </p>
-                            </div>
-
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                class="size-11 text-muted-foreground hover:text-destructive"
-                                :disabled="processingItemId === item.id"
-                                :aria-label="`Remove ${item.productName}`"
-                                @click="removeItem(item)"
-                            >
-                                <Trash2 class="size-4" aria-hidden="true" />
-                            </Button>
-                        </div>
-                    </article>
+                    </section>
                 </div>
 
                 <!-- Summary -->
@@ -282,9 +354,39 @@ function clearCart(): void {
                     <div
                         class="space-y-4 rounded-2xl border border-border bg-card p-6 lg:sticky lg:top-24"
                     >
-                        <h2 class="text-lg font-bold text-foreground">
-                            Order Summary
-                        </h2>
+                        <div class="flex items-center justify-between gap-2">
+                            <h2 class="text-lg font-bold text-foreground">
+                                Order Summary
+                            </h2>
+                            <Badge variant="outline" class="text-[11px]">
+                                {{ cart.storeCount }}
+                                {{ cart.storeCount === 1 ? 'store' : 'stores' }}
+                            </Badge>
+                        </div>
+
+                        <div
+                            v-if="cart.sellerGroups.length > 1"
+                            class="space-y-1.5 rounded-xl border border-border/70 bg-secondary/30 p-3 text-xs"
+                        >
+                            <p
+                                class="font-semibold text-muted-foreground uppercase"
+                            >
+                                Store Breakdown
+                            </p>
+                            <div
+                                v-for="group in cart.sellerGroups"
+                                :key="`summary-${group.storeId ?? 'store'}-${group.storeName}`"
+                                class="flex items-center justify-between gap-2"
+                            >
+                                <span class="truncate text-foreground">{{
+                                    group.storeName
+                                }}</span>
+                                <span
+                                    class="shrink-0 font-semibold text-foreground tabular-nums"
+                                    >{{ group.subtotalFormatted }}</span
+                                >
+                            </div>
+                        </div>
 
                         <div class="space-y-2.5 text-sm">
                             <div class="flex items-center justify-between">

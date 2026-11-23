@@ -49,12 +49,26 @@ export interface SecurityAuditEntry {
     created_at_diff: string;
 }
 
+export interface CustomerPaymentEntry {
+    id: number;
+    order_id: number;
+    order_number: string;
+    provider: string;
+    payment_method_type: string | null;
+    status: string;
+    status_label: string;
+    amount_formatted: string;
+    activity_at_diff: string;
+}
+
 export interface AccountDashboardSummary {
     roleLabel: string;
     emailVerified: boolean;
     hasMfaEnabled: boolean;
     addressCount: number;
     orderCount: number;
+    wishlistCount?: number;
+    totalSpentFormatted?: string;
     unreadNotificationsCount?: number;
     defaultShippingAddress: {
         label: string;
@@ -62,6 +76,8 @@ export interface AccountDashboardSummary {
         phone: string;
         formatted_line: string;
     } | null;
+    recentOrders?: OrderListItem[];
+    recentPayments?: CustomerPaymentEntry[];
     recentSecurityEvents: SecurityAuditEntry[];
 }
 

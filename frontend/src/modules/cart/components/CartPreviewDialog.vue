@@ -36,8 +36,8 @@ const emit = defineEmits<{
 
 <template>
     <Dialog :open="open" @update:open="emit('update:open', $event)">
-        <DialogContent class="sm:max-w-md">
-            <DialogHeader>
+        <DialogContent class="sm:max-w-lg">
+            <DialogHeader class="pr-6">
                 <DialogTitle class="flex items-center gap-2">
                     <ShoppingBag
                         class="size-4 text-primary"
@@ -51,13 +51,15 @@ const emit = defineEmits<{
                 </DialogDescription>
             </DialogHeader>
 
-            <div class="space-y-3 py-2">
+            <div class="min-w-0 space-y-3 py-1">
                 <template v-if="cart.items && cart.items.length > 0">
-                    <ul class="max-h-64 space-y-2.5 overflow-y-auto pr-1">
+                    <ul
+                        class="max-h-64 space-y-2.5 overflow-x-hidden overflow-y-auto"
+                    >
                         <li
                             v-for="item in cart.items"
                             :key="item.id"
-                            class="flex items-center gap-3 rounded-xl border border-border bg-secondary/30 p-2.5 text-sm"
+                            class="flex w-full min-w-0 items-center gap-3 rounded-xl border border-border bg-secondary/40 p-3 text-sm"
                         >
                             <div
                                 class="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-background"
@@ -84,6 +86,12 @@ const emit = defineEmits<{
                                     >{{ item.quantity }} &times;
                                     {{ item.unitPriceFormatted }}
                                 </p>
+                                <p
+                                    v-if="item.sellerName"
+                                    class="truncate text-[11px] text-muted-foreground"
+                                >
+                                    Sold by {{ item.sellerName }}
+                                </p>
                             </div>
                             <span
                                 class="shrink-0 font-semibold text-foreground tabular-nums"
@@ -94,13 +102,15 @@ const emit = defineEmits<{
                     </ul>
 
                     <div
-                        class="flex items-center justify-between rounded-xl border border-border bg-card px-3.5 py-2.5 text-sm"
+                        class="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-border bg-card px-3.5 py-2.5 text-sm"
                     >
-                        <span class="text-muted-foreground">
+                        <span class="truncate text-muted-foreground">
                             Subtotal ({{ cart.itemCount }}
                             {{ cart.itemCount === 1 ? 'item' : 'items' }})
                         </span>
-                        <span class="font-bold text-foreground tabular-nums">
+                        <span
+                            class="shrink-0 font-bold text-foreground tabular-nums"
+                        >
                             {{ cart.subtotalFormatted ?? '₱0.00' }}
                         </span>
                     </div>
@@ -131,11 +141,13 @@ const emit = defineEmits<{
                 </p>
             </div>
 
-            <DialogFooter class="flex-col gap-2 sm:flex-row sm:justify-between">
+            <DialogFooter
+                class="min-w-0 flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between"
+            >
                 <Button
                     type="button"
                     variant="outline"
-                    class="h-11"
+                    class="h-11 w-full sm:w-auto"
                     @click="emit('update:open', false)"
                 >
                     Continue Shopping
@@ -143,12 +155,12 @@ const emit = defineEmits<{
 
                 <div
                     v-if="!isDemoPreview"
-                    class="flex flex-wrap items-center justify-end gap-2"
+                    class="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto"
                 >
                     <Button
                         as-child
                         variant="secondary"
-                        class="h-11"
+                        class="h-11 flex-1 sm:flex-initial"
                         @click="emit('update:open', false)"
                     >
                         <Link :href="cartIndex()">View Cart</Link>
@@ -156,7 +168,7 @@ const emit = defineEmits<{
                     <Button
                         v-if="cart.itemCount > 0"
                         as-child
-                        class="h-11"
+                        class="h-11 flex-1 sm:flex-initial"
                         @click="emit('update:open', false)"
                     >
                         <Link :href="checkoutIndex()">Checkout</Link>

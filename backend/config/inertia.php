@@ -28,6 +28,7 @@ return [
             base_path('../frontend/src/modules/cart/pages'),
             base_path('../frontend/src/modules/checkout/pages'),
             base_path('../frontend/src/modules/account/pages'),
+            base_path('../frontend/src/modules/seller/pages'),
             base_path('../frontend/src/modules/admin/pages'),
         ],
 

@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import {
     Check,
     ChevronRight,
+    Heart,
     ImageOff,
     ShieldCheck,
     ShoppingCart,
@@ -17,10 +18,11 @@ import { StorefrontLayout } from '@modules/storefront';
 import { Badge } from '@shared/components/ui/badge';
 import { Button } from '@shared/components/ui/button';
 import { Separator } from '@shared/components/ui/separator';
-import { home } from '@/routes';
+import { home, login } from '@/routes';
 import { index as cartIndex } from '@/routes/cart';
 import { store as cartItemsStore } from '@/routes/cart/items';
 import { index as catalogIndex } from '@/routes/catalog';
+import { toggle as wishlistToggle } from '@/routes/wishlist';
 import type {
     ProductDetailProps,
     ProductSummary,
@@ -28,6 +30,23 @@ import type {
 } from '@modules/catalog/types';
 
 const props = defineProps<ProductDetailProps>();
+const page = usePage();
+const isWishlisted = computed(() =>
+    (page.props.wishlistProductIds ?? []).includes(Number(props.product.id)),
+);
+
+function handleToggleWishlist(): void {
+    if (!page.props.auth?.user) {
+        router.visit(login.url());
+        return;
+    }
+
+    router.post(
+        wishlistToggle.url(Number(props.product.id)),
+        {},
+        { preserveScroll: true },
+    );
+}
 
 const defaultVariant = computed<ProductVariantItem | null>(
     () =>
@@ -355,11 +374,27 @@ function handleAddRelated(related: ProductSummary): void {
                                     activeSku
                                 }}</strong>
                             </span>
-                            <span v-if="product.sellerName">
-                                Sold by
-                                <strong class="text-foreground">{{
+                            <span
+                                v-if="product.sellerName"
+                                class="inline-flex flex-wrap items-center gap-1.5"
+                            >
+                                <span>Sold by</span>
+                                <Link
+                                    v-if="product.storeUrl"
+                                    :href="product.storeUrl"
+                                    class="font-semibold text-foreground underline-offset-2 transition-colors hover:text-primary hover:underline"
+                                >
+                                    {{ product.sellerName }}
+                                </Link>
+                                <strong v-else class="text-foreground">{{
                                     product.sellerName
                                 }}</strong>
+                                <span
+                                    v-if="product.isOfficialStore"
+                                    class="inline-flex items-center rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-primary uppercase"
+                                >
+                                    Official Store
+                                </span>
                             </span>
                             <RatingDisplay
                                 :rating-average="product.ratingAverage"
@@ -481,6 +516,26 @@ function handleAddRelated(related: ProductSummary): void {
                                           : 'Add to Cart'
                                 }}
                             </span>
+                        </Button>
+
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="lg"
+                            class="h-11 gap-2"
+                            :aria-pressed="isWishlisted"
+                            @click="handleToggleWishlist"
+                        >
+                            <Heart
+                                :class="[
+                                    'size-4',
+                                    isWishlisted
+                                        ? 'fill-primary text-primary'
+                                        : '',
+                                ]"
+                                aria-hidden="true"
+                            />
+                            <span>{{ isWishlisted ? 'Saved' : 'Save' }}</span>
                         </Button>
 
                         <Button

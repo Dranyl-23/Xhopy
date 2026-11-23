@@ -1,11 +1,34 @@
 <script setup lang="ts">
-import { Link, usePage } from '@inertiajs/vue3';
-import { Menu, ShieldCheck, User } from '@lucide/vue';
+import { Link, router, usePage } from '@inertiajs/vue3';
+import {
+    BarChart3,
+    Building2,
+    ChevronDown,
+    Heart,
+    LogOut,
+    MapPin,
+    Menu,
+    PackageCheck,
+    ReceiptText,
+    Settings,
+    ShieldCheck,
+    Store,
+    User,
+} from '@lucide/vue';
 import { computed, ref } from 'vue';
 import { CartButton, type CartSummary } from '@modules/cart';
 import SearchBox from '@modules/storefront/components/SearchBox.vue';
 import BrandLogo from '@shared/components/BrandLogo.vue';
 import { Button } from '@shared/components/ui/button';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuGroup,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@shared/components/ui/dropdown-menu';
 import {
     Sheet,
     SheetContent,
@@ -14,7 +37,19 @@ import {
     SheetTitle,
     SheetTrigger,
 } from '@shared/components/ui/sheet';
-import { dashboard, home, login, register } from '@/routes';
+import { dashboard, home, login, logout, register } from '@/routes';
+import { index as addressesIndex } from '@/routes/addresses';
+import { index as adminCatalogIndex } from '@/routes/admin/catalog';
+import { index as adminOperationsIndex } from '@/routes/admin/operations';
+import { index as adminSellersIndex } from '@/routes/admin/sellers';
+import { index as ordersIndex } from '@/routes/orders';
+import { edit as profileEdit } from '@/routes/profile';
+import {
+    dashboard as sellerDashboard,
+    onboarding as sellerOnboarding,
+} from '@/routes/seller';
+import { index as storesIndex } from '@/routes/stores';
+import { index as wishlistIndex } from '@/routes/wishlist';
 import type {
     AnnouncementBanner,
     CategorySummary,
@@ -49,6 +84,11 @@ const mobileMenuOpen = ref(false);
 function handleMobileCategory(slug: string | null): void {
     mobileMenuOpen.value = false;
     emit('selectCategory', slug);
+}
+
+function handleLogout(): void {
+    mobileMenuOpen.value = false;
+    router.flushAll();
 }
 </script>
 
@@ -124,6 +164,17 @@ function handleMobileCategory(slug: string | null): void {
                                 >
                                     All Products
                                 </button>
+                                <Link
+                                    :href="storesIndex()"
+                                    class="flex min-h-11 items-center gap-2 rounded-lg px-3 text-left text-sm font-semibold text-foreground hover:bg-secondary"
+                                    @click="mobileMenuOpen = false"
+                                >
+                                    <Store
+                                        class="size-4 text-primary"
+                                        aria-hidden="true"
+                                    />
+                                    <span>Verified Stores</span>
+                                </Link>
                                 <button
                                     v-for="cat in props.categories"
                                     :key="cat.id"
@@ -156,6 +207,71 @@ function handleMobileCategory(slug: string | null): void {
                                                 aria-hidden="true"
                                             />
                                             <span>My Account</span>
+                                        </Link>
+                                    </Button>
+                                    <Button
+                                        as-child
+                                        variant="outline"
+                                        class="h-11 w-full justify-start gap-2"
+                                    >
+                                        <Link :href="ordersIndex()">
+                                            <ReceiptText
+                                                class="size-4"
+                                                aria-hidden="true"
+                                            />
+                                            <span>My Orders</span>
+                                        </Link>
+                                    </Button>
+                                    <Button
+                                        v-if="!page.props.auth?.canAccessAdmin"
+                                        as-child
+                                        variant="outline"
+                                        class="h-11 w-full justify-start gap-2"
+                                    >
+                                        <Link
+                                            :href="
+                                                page.props.auth
+                                                    ?.isApprovedSeller
+                                                    ? sellerDashboard()
+                                                    : sellerOnboarding()
+                                            "
+                                        >
+                                            <Building2
+                                                class="size-4"
+                                                aria-hidden="true"
+                                            />
+                                            <span>{{
+                                                page.props.auth
+                                                    ?.isApprovedSeller
+                                                    ? 'Seller Dashboard'
+                                                    : page.props.auth?.isSeller
+                                                      ? 'Seller Onboarding'
+                                                      : 'Become a Seller'
+                                            }}</span>
+                                        </Link>
+                                    </Button>
+                                    <Button
+                                        v-if="page.props.auth?.canAccessAdmin"
+                                        as-child
+                                        variant="secondary"
+                                        class="h-11 w-full justify-start gap-2"
+                                    >
+                                        <Link
+                                            :href="
+                                                page.props.auth
+                                                    ?.canManageOperations
+                                                    ? adminOperationsIndex()
+                                                    : page.props.auth
+                                                            ?.canReviewSellers
+                                                      ? adminSellersIndex()
+                                                      : adminCatalogIndex()
+                                            "
+                                        >
+                                            <BarChart3
+                                                class="size-4"
+                                                aria-hidden="true"
+                                            />
+                                            <span>Admin Portal</span>
                                         </Link>
                                     </Button>
                                 </div>
@@ -194,17 +310,226 @@ function handleMobileCategory(slug: string | null): void {
 
                 <!-- Right: Account & Cart actions -->
                 <div class="flex items-center gap-2 sm:gap-3">
+                    <Button
+                        as-child
+                        variant="ghost"
+                        class="hidden h-11 gap-1.5 rounded-full px-3.5 sm:inline-flex"
+                    >
+                        <Link :href="storesIndex()">
+                            <Store
+                                class="size-4 text-primary"
+                                aria-hidden="true"
+                            />
+                            <span>Stores</span>
+                        </Link>
+                    </Button>
                     <template v-if="user">
-                        <Button
-                            as-child
-                            variant="ghost"
-                            class="hidden h-11 gap-2 rounded-full px-4 sm:inline-flex"
-                        >
-                            <Link :href="dashboard()">
-                                <User class="size-4" aria-hidden="true" />
-                                <span>Account</span>
-                            </Link>
-                        </Button>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger as-child>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    class="hidden h-11 gap-1.5 rounded-full px-4 sm:inline-flex"
+                                >
+                                    <User class="size-4" aria-hidden="true" />
+                                    <span>Account</span>
+                                    <ChevronDown
+                                        class="size-3.5 text-muted-foreground"
+                                        aria-hidden="true"
+                                    />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" class="w-60">
+                                <DropdownMenuLabel class="font-normal">
+                                    <p
+                                        class="truncate text-sm font-semibold text-foreground"
+                                    >
+                                        {{ user.name }}
+                                    </p>
+                                    <p
+                                        class="truncate text-xs text-muted-foreground"
+                                    >
+                                        {{ user.email }}
+                                    </p>
+                                </DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuGroup>
+                                    <DropdownMenuItem as-child>
+                                        <Link
+                                            :href="dashboard()"
+                                            class="cursor-pointer"
+                                        >
+                                            <User
+                                                class="size-4"
+                                                aria-hidden="true"
+                                            />
+                                            <span>My Account</span>
+                                        </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem as-child>
+                                        <Link
+                                            :href="ordersIndex()"
+                                            class="cursor-pointer"
+                                        >
+                                            <ReceiptText
+                                                class="size-4"
+                                                aria-hidden="true"
+                                            />
+                                            <span>My Orders</span>
+                                        </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem as-child>
+                                        <Link
+                                            :href="wishlistIndex()"
+                                            class="cursor-pointer"
+                                        >
+                                            <Heart
+                                                class="size-4"
+                                                aria-hidden="true"
+                                            />
+                                            <span>Saved Wishlist</span>
+                                        </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem as-child>
+                                        <Link
+                                            :href="addressesIndex()"
+                                            class="cursor-pointer"
+                                        >
+                                            <MapPin
+                                                class="size-4"
+                                                aria-hidden="true"
+                                            />
+                                            <span>Saved Addresses</span>
+                                        </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem as-child>
+                                        <Link
+                                            :href="profileEdit()"
+                                            class="cursor-pointer"
+                                        >
+                                            <Settings
+                                                class="size-4"
+                                                aria-hidden="true"
+                                            />
+                                            <span>Profile &amp; Security</span>
+                                        </Link>
+                                    </DropdownMenuItem>
+                                </DropdownMenuGroup>
+
+                                <template
+                                    v-if="!page.props.auth?.canAccessAdmin"
+                                >
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuLabel
+                                        class="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase"
+                                    >
+                                        Seller Portal
+                                    </DropdownMenuLabel>
+                                    <DropdownMenuItem as-child>
+                                        <Link
+                                            :href="
+                                                page.props.auth
+                                                    ?.isApprovedSeller
+                                                    ? sellerDashboard()
+                                                    : sellerOnboarding()
+                                            "
+                                            class="cursor-pointer"
+                                        >
+                                            <Building2
+                                                class="size-4"
+                                                aria-hidden="true"
+                                            />
+                                            <span>{{
+                                                page.props.auth
+                                                    ?.isApprovedSeller
+                                                    ? 'Seller Dashboard'
+                                                    : page.props.auth?.isSeller
+                                                      ? 'Seller Onboarding'
+                                                      : 'Become a Seller'
+                                            }}</span>
+                                        </Link>
+                                    </DropdownMenuItem>
+                                </template>
+
+                                <template
+                                    v-if="page.props.auth?.canAccessAdmin"
+                                >
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuLabel
+                                        class="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase"
+                                    >
+                                        Administration
+                                    </DropdownMenuLabel>
+                                    <DropdownMenuItem
+                                        v-if="
+                                            page.props.auth?.canManageOperations
+                                        "
+                                        as-child
+                                    >
+                                        <Link
+                                            :href="adminOperationsIndex()"
+                                            class="cursor-pointer"
+                                        >
+                                            <BarChart3
+                                                class="size-4"
+                                                aria-hidden="true"
+                                            />
+                                            <span
+                                                >Operations &amp;
+                                                Analytics</span
+                                            >
+                                        </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        v-if="page.props.auth?.canReviewSellers"
+                                        as-child
+                                    >
+                                        <Link
+                                            :href="adminSellersIndex()"
+                                            class="cursor-pointer"
+                                        >
+                                            <Building2
+                                                class="size-4"
+                                                aria-hidden="true"
+                                            />
+                                            <span>Seller Applications</span>
+                                        </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        v-if="page.props.auth?.canManageCatalog"
+                                        as-child
+                                    >
+                                        <Link
+                                            :href="adminCatalogIndex()"
+                                            class="cursor-pointer"
+                                        >
+                                            <PackageCheck
+                                                class="size-4"
+                                                aria-hidden="true"
+                                            />
+                                            <span>Catalog Admin</span>
+                                        </Link>
+                                    </DropdownMenuItem>
+                                </template>
+
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem as-child>
+                                    <Link
+                                        :href="logout()"
+                                        method="post"
+                                        as="button"
+                                        class="w-full cursor-pointer text-destructive focus:text-destructive"
+                                        @click="handleLogout"
+                                    >
+                                        <LogOut
+                                            class="size-4"
+                                            aria-hidden="true"
+                                        />
+                                        <span>Log out</span>
+                                    </Link>
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </template>
                     <template v-else>
                         <Button

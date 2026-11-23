@@ -6,6 +6,7 @@ import {
     CreditCard,
     MapPin,
     ShieldCheck,
+    Store,
 } from '@lucide/vue';
 import { computed } from 'vue';
 import { StorefrontLayout } from '@modules/storefront';
@@ -275,7 +276,71 @@ function submitCheckout(): void {
                             </CardDescription>
                         </CardHeader>
                         <CardContent class="space-y-4">
-                            <ul class="divide-y divide-border text-sm">
+                            <div
+                                v-if="cart.sellerGroups.length > 0"
+                                class="space-y-4"
+                            >
+                                <div
+                                    v-for="group in cart.sellerGroups"
+                                    :key="`${group.storeId ?? 'store'}-${group.storeName}`"
+                                    class="rounded-xl border border-border/80 bg-secondary/20 p-3.5"
+                                >
+                                    <div
+                                        class="mb-2 flex items-center justify-between gap-2 border-b border-border/60 pb-2 text-xs"
+                                    >
+                                        <span
+                                            class="flex min-w-0 items-center gap-1.5 font-semibold text-foreground"
+                                        >
+                                            <Store
+                                                class="size-3.5 shrink-0 text-primary"
+                                                aria-hidden="true"
+                                            />
+                                            <span class="truncate">{{
+                                                group.storeName
+                                            }}</span>
+                                        </span>
+                                        <span
+                                            class="shrink-0 font-semibold text-foreground tabular-nums"
+                                        >
+                                            {{ group.subtotalFormatted }}
+                                        </span>
+                                    </div>
+                                    <ul
+                                        class="divide-y divide-border/60 text-sm"
+                                    >
+                                        <li
+                                            v-for="item in group.items"
+                                            :key="item.id"
+                                            class="flex items-start justify-between gap-3 py-2 first:pt-0 last:pb-0"
+                                        >
+                                            <div class="min-w-0">
+                                                <p
+                                                    class="truncate font-medium text-foreground"
+                                                >
+                                                    {{ item.productName }}
+                                                </p>
+                                                <p
+                                                    class="text-xs text-muted-foreground"
+                                                >
+                                                    <span
+                                                        v-if="item.variantTitle"
+                                                        >{{
+                                                            item.variantTitle
+                                                        }}
+                                                        · </span
+                                                    >Qty {{ item.quantity }}
+                                                </p>
+                                            </div>
+                                            <span
+                                                class="shrink-0 font-semibold text-foreground tabular-nums"
+                                            >
+                                                {{ item.lineTotalFormatted }}
+                                            </span>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <ul v-else class="divide-y divide-border text-sm">
                                 <li
                                     v-for="item in cart.items"
                                     :key="item.id"

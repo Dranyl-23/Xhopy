@@ -165,6 +165,28 @@ test.describe
             page.getByRole('button', { name: /Shopping cart/i }),
         ).toContainText('1');
 
+        // Verify CartPreviewDialog stays bounded on desktop and mobile (no child overflow)
+        await page.getByRole('button', { name: /Shopping cart/i }).click();
+        const cartDialog = page.getByRole('dialog');
+        await expect(cartDialog).toBeVisible();
+        await expect
+            .poll(async () =>
+                cartDialog.evaluate((el) =>
+                    Number.parseFloat(getComputedStyle(el).opacity),
+                ),
+            )
+            .toBe(1);
+        const dialogOverflowDesktop = await cartDialog.evaluate(
+            (el) => el.scrollWidth > el.clientWidth + 1,
+        );
+        expect(dialogOverflowDesktop).toBe(false);
+        if (!process.env.CI && fs.existsSync(artifactsDir)) {
+            await page.screenshot({
+                path: path.join(artifactsDir, 'mv2_cart_dialog_fixed.png'),
+            });
+        }
+        await page.getByRole('button', { name: 'Continue Shopping' }).click();
+
         await page.getByRole('link', { name: 'View Cart' }).click();
         await expect(page).toHaveURL(/\/cart/);
         await expect(

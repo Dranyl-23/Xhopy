@@ -6,6 +6,7 @@ use App\Domain\Catalog\Models\Product;
 use App\Domain\Catalog\Models\ProductVariant;
 use App\Domain\Inventory\Enums\StockMovementType;
 use App\Domain\Orders\Models\Order;
+use App\Domain\Seller\Models\Store;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -16,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $id
  * @property int $product_id
  * @property int|null $product_variant_id
+ * @property int|null $store_id
  * @property int|null $order_id
  * @property int|null $actor_id
  * @property StockMovementType $type
@@ -25,12 +27,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property CarbonImmutable $created_at
  * @property-read Product $product
  * @property-read ProductVariant|null $variant
+ * @property-read Store|null $store
  * @property-read Order|null $order
  * @property-read User|null $actor
  */
 #[Fillable([
     'product_id',
     'product_variant_id',
+    'store_id',
     'order_id',
     'actor_id',
     'type',
@@ -51,6 +55,7 @@ class StockMovement extends Model
         return [
             'product_id' => 'integer',
             'product_variant_id' => 'integer',
+            'store_id' => 'integer',
             'order_id' => 'integer',
             'actor_id' => 'integer',
             'type' => StockMovementType::class,
@@ -90,5 +95,13 @@ class StockMovement extends Model
     public function actor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'actor_id');
+    }
+
+    /**
+     * @return BelongsTo<Store, $this>
+     */
+    public function store(): BelongsTo
+    {
+        return $this->belongsTo(Store::class);
     }
 }

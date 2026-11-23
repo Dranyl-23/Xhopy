@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import SiteFooter from '@modules/storefront/components/SiteFooter.vue';
 import SiteHeader from '@modules/storefront/components/SiteHeader.vue';
+import PortalProgressBar from '@shared/components/PortalProgressBar.vue';
 import type { CartSummary } from '@modules/cart';
 import type {
     AnnouncementBanner,
@@ -32,6 +33,7 @@ const emit = defineEmits<{
 
 <template>
     <div class="flex min-h-screen flex-col bg-background text-foreground">
+        <PortalProgressBar />
         <SiteHeader
             :announcement="announcement"
             :categories="categories"

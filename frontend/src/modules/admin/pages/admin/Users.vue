@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, router, usePage } from '@inertiajs/vue3';
 import { History, Search, ShieldCheck, Users } from '@lucide/vue';
-import { computed, ref } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import { PaginationBar } from '@modules/catalog';
 import { Badge } from '@shared/components/ui/badge';
 import { Button } from '@shared/components/ui/button';
@@ -12,6 +12,7 @@ import {
     CardHeader,
     CardTitle,
 } from '@shared/components/ui/card';
+import { Checkbox } from '@shared/components/ui/checkbox';
 import { Input } from '@shared/components/ui/input';
 import { SelectField } from '@shared/components/ui/select';
 import { index as adminUsersIndex } from '@/routes/admin/users';
@@ -32,6 +33,7 @@ const props = defineProps<{
     };
     recentAuditLogs: AdminAuditLogRow[];
     roles: AdminStatusOption[];
+    staffPermissions: AdminStatusOption[];
     filters: {
         q: string;
         role: string;
@@ -41,6 +43,7 @@ const props = defineProps<{
 const page = usePage();
 const searchInput = ref(props.filters.q);
 const roleFilter = ref(props.filters.role);
+const draftPermissions = reactive<Record<number, string[]>>({});
 
 const paginationMeta = computed(() => ({
     currentPage: props.users.current_page,
@@ -72,6 +75,61 @@ function handleRoleChange(targetUser: AdminUserRow, nextRole: string): void {
         updateUserRole.url(targetUser.id),
         { role: nextRole },
         { preserveScroll: true },
+    );
+}
+
+function currentPermissions(account: AdminUserRow): string[] {
+    return draftPermissions[account.id] ?? account.staff_permissions ?? [];
+}
+
+function hasPermission(account: AdminUserRow, permission: string): boolean {
+    return currentPermissions(account).includes(permission);
+}
+
+function togglePermission(
+    account: AdminUserRow,
+    permission: string,
+    checked: boolean | 'indeterminate',
+): void {
+    const base = [...currentPermissions(account)];
+    const exists = base.includes(permission);
+
+    if (checked === true && !exists) {
+        draftPermissions[account.id] = [...base, permission];
+    } else if (checked !== true && exists) {
+        draftPermissions[account.id] = base.filter(
+            (item) => item !== permission,
+        );
+    }
+}
+
+function isPermissionsDirty(account: AdminUserRow): boolean {
+    if (!(account.id in draftPermissions)) {
+        return false;
+    }
+
+    const original = [...(account.staff_permissions ?? [])].sort();
+    const next = [...draftPermissions[account.id]].sort();
+
+    return (
+        original.length !== next.length ||
+        original.some((val, index) => val !== next[index])
+    );
+}
+
+function savePermissions(account: AdminUserRow): void {
+    router.patch(
+        updateUserRole.url(account.id),
+        {
+            role: account.role,
+            staff_permissions: currentPermissions(account),
+        },
+        {
+            preserveScroll: true,
+            onSuccess: () => {
+                delete draftPermissions[account.id];
+            },
+        },
     );
 }
 </script>
@@ -211,7 +269,7 @@ function handleRoleChange(targetUser: AdminUserRow, nextRole: string): void {
                                         }}
                                     </p>
                                 </td>
-                                <td class="px-4 py-3.5">
+                                <td class="px-4 py-3.5 align-top">
                                     <div class="w-40">
                                         <SelectField
                                             :model-value="account.role"
@@ -219,7 +277,7 @@ function handleRoleChange(targetUser: AdminUserRow, nextRole: string): void {
                                             size="default"
                                             :disabled="
                                                 account.id ===
-                                                page.props.auth.user.id
+                                                page.props.auth.user?.id
                                             "
                                             :aria-label="`Role for ${account.name}`"
                                             @change="
@@ -230,6 +288,54 @@ function handleRoleChange(targetUser: AdminUserRow, nextRole: string): void {
                                                     )
                                             "
                                         />
+                                    </div>
+                                    <div
+                                        v-if="account.role === 'staff'"
+                                        class="mt-3 space-y-2 rounded-lg border border-border/80 bg-muted/30 p-2.5"
+                                    >
+                                        <p
+                                            class="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase"
+                                        >
+                                            Staff Permissions
+                                        </p>
+                                        <div class="space-y-1.5">
+                                            <label
+                                                v-for="perm in staffPermissions"
+                                                :key="perm.value"
+                                                class="flex cursor-pointer items-center gap-2 text-xs text-foreground"
+                                            >
+                                                <Checkbox
+                                                    :model-value="
+                                                        hasPermission(
+                                                            account,
+                                                            perm.value,
+                                                        )
+                                                    "
+                                                    :disabled="
+                                                        account.id ===
+                                                        page.props.auth.user?.id
+                                                    "
+                                                    @update:model-value="
+                                                        (checked) =>
+                                                            togglePermission(
+                                                                account,
+                                                                perm.value,
+                                                                checked,
+                                                            )
+                                                    "
+                                                />
+                                                <span>{{ perm.label }}</span>
+                                            </label>
+                                        </div>
+                                        <Button
+                                            v-if="isPermissionsDirty(account)"
+                                            type="button"
+                                            size="sm"
+                                            class="h-8 w-full text-xs"
+                                            @click="savePermissions(account)"
+                                        >
+                                            Save Permissions
+                                        </Button>
                                     </div>
                                 </td>
                                 <td

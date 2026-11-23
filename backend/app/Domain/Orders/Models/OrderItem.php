@@ -4,6 +4,7 @@ namespace App\Domain\Orders\Models;
 
 use App\Domain\Catalog\Models\Product;
 use App\Domain\Catalog\Models\ProductVariant;
+use App\Domain\Seller\Models\Store;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -15,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int|null $product_id
  * @property int|null $product_variant_id
  * @property int|null $seller_id
+ * @property int|null $store_id
  * @property string $seller_name
  * @property string $product_name
  * @property string|null $variant_title
@@ -28,12 +30,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property-read Order $order
  * @property-read Product|null $product
  * @property-read ProductVariant|null $variant
+ * @property-read Store|null $store
  */
 #[Fillable([
     'order_id',
     'product_id',
     'product_variant_id',
     'seller_id',
+    'store_id',
     'seller_name',
     'product_name',
     'variant_title',
@@ -55,6 +59,7 @@ class OrderItem extends Model
             'product_id' => 'integer',
             'product_variant_id' => 'integer',
             'seller_id' => 'integer',
+            'store_id' => 'integer',
             'unit_price' => 'decimal:2',
             'quantity' => 'integer',
             'line_total' => 'decimal:2',
@@ -83,5 +88,13 @@ class OrderItem extends Model
     public function variant(): BelongsTo
     {
         return $this->belongsTo(ProductVariant::class, 'product_variant_id');
+    }
+
+    /**
+     * @return BelongsTo<Store, $this>
+     */
+    public function store(): BelongsTo
+    {
+        return $this->belongsTo(Store::class);
     }
 }

@@ -10,11 +10,13 @@ import type {
     BrandSummary,
     CatalogFilters,
     CategorySummary,
+    StoreSummary,
 } from '@modules/catalog/types';
 
 const props = defineProps<{
     categories: CategorySummary[];
     brands: BrandSummary[];
+    stores?: StoreSummary[];
     filters: CatalogFilters;
     idPrefix?: string;
 }>();
@@ -30,6 +32,12 @@ const brandOptions = computed<SelectOption[]>(() =>
     props.brands.map((brand) => ({
         value: brand.slug,
         label: brand.name,
+    })),
+);
+const storeOptions = computed<SelectOption[]>(() =>
+    (props.stores ?? []).map((store) => ({
+        value: store.slug,
+        label: store.name,
     })),
 );
 
@@ -141,6 +149,30 @@ function applyPriceRange(): void {
         </div>
 
         <Separator v-if="brands.length > 0" />
+
+        <!-- Seller Store -->
+        <div v-if="storeOptions.length > 0" class="space-y-2.5">
+            <Label
+                :for="`${idPrefix ?? 'desktop'}-store-filter`"
+                class="block text-xs font-semibold tracking-wider text-muted-foreground uppercase"
+            >
+                Verified Store
+            </Label>
+            <SelectField
+                :id="`${idPrefix ?? 'desktop'}-store-filter`"
+                :model-value="filters.store ?? ''"
+                :options="storeOptions"
+                empty-option-label="All Stores"
+                @change="
+                    (value) =>
+                        emit('apply', {
+                            store: value === '' ? null : String(value),
+                        })
+                "
+            />
+        </div>
+
+        <Separator v-if="storeOptions.length > 0" />
 
         <!-- Price Range -->
         <form class="space-y-3" @submit.prevent="applyPriceRange">

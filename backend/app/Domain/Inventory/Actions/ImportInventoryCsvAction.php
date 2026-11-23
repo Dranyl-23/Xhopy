@@ -7,6 +7,7 @@ use App\Domain\Catalog\Models\ProductVariant;
 use App\Domain\Identity\Enums\SecurityAuditEvent;
 use App\Domain\Identity\Services\SecurityAuditLogger;
 use App\Domain\Inventory\Services\InventoryReservationService;
+use App\Domain\Seller\Models\Store;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -29,8 +30,12 @@ final class ImportInventoryCsvAction
      *
      * @throws ValidationException
      */
-    public function execute(UploadedFile $file, User $actor, ?Request $request = null): array
-    {
+    public function execute(
+        UploadedFile $file,
+        User $actor,
+        ?Request $request = null,
+        ?Store $scopedStore = null,
+    ): array {
         $realPath = $file->getRealPath();
         if (! is_string($realPath) || $realPath === '' || ! is_file($realPath)) {
             throw ValidationException::withMessages([
@@ -119,13 +124,19 @@ final class ImportInventoryCsvAction
                 ]);
             }
 
-            return DB::transaction(function () use ($rows, $actor, $request): array {
+            return DB::transaction(function () use ($rows, $actor, $request, $scopedStore): array {
                 $updatedCount = 0;
 
                 foreach ($rows as $row) {
                     $variant = ProductVariant::query()->with('product')->where('sku', $row['sku'])->first();
 
                     if ($variant instanceof ProductVariant) {
+                        if ($scopedStore instanceof Store && (int) $variant->product->store_id !== $scopedStore->id) {
+                            throw ValidationException::withMessages([
+                                'csv_file' => "Line {$row['line']}: SKU \"{$row['sku']}\" does not belong to your store.",
+                            ]);
+                        }
+
                         $this->inventoryReservation->adjustStock(
                             product: $variant->product,
                             variant: $variant,
@@ -142,6 +153,12 @@ final class ImportInventoryCsvAction
                     if (! $product instanceof Product) {
                         throw ValidationException::withMessages([
                             'csv_file' => "Line {$row['line']}: SKU \"{$row['sku']}\" was not found in catalog products or variants.",
+                        ]);
+                    }
+
+                    if ($scopedStore instanceof Store && (int) $product->store_id !== $scopedStore->id) {
+                        throw ValidationException::withMessages([
+                            'csv_file' => "Line {$row['line']}: SKU \"{$row['sku']}\" does not belong to your store.",
                         ]);
                     }
 
@@ -162,13 +179,16 @@ final class ImportInventoryCsvAction
                 }
 
                 $this->auditLogger->record(
-                    event: SecurityAuditEvent::InventoryBulkImported,
-                    user: null,
+                    event: $scopedStore instanceof Store
+                        ? SecurityAuditEvent::SellerInventoryBulkImported
+                        : SecurityAuditEvent::InventoryBulkImported,
+                    user: $scopedStore instanceof Store ? $actor : null,
                     actor: $actor,
-                    metadata: [
+                    metadata: array_filter([
+                        'store_id' => $scopedStore?->id,
                         'rows_processed' => count($rows),
                         'skus_updated' => $updatedCount,
-                    ],
+                    ], static fn (mixed $value): bool => $value !== null),
                     request: $request,
                 );
 

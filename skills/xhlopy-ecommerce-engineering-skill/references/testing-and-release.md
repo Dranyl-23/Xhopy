@@ -1,7 +1,6 @@
 # Testing, Operations, and Release Standards
 
 ## Test layers
-
 - Unit tests: calculations, validators, domain rules, permission checks, state transitions.
 - Integration tests: database repositories, transactions, queues, storage, and provider adapters.
 - API tests: authentication, authorization, validation, response contracts, pagination, error cases.
@@ -11,7 +10,6 @@
 - Regression tests for every fixed defect.
 
 ## Important scenarios
-
 - Product is inactive or deleted while in cart.
 - Price or promotion changes between cart and checkout.
 - Stock reaches zero during concurrent checkout.
@@ -25,9 +23,7 @@
 - Mobile viewport, keyboard-only use, slow network, and API failure.
 
 ## Quality gates
-
 Run the repository's actual scripts, not assumed command names:
-
 - formatter
 - linter
 - type checker
@@ -40,7 +36,6 @@ Run the repository's actual scripts, not assumed command names:
 If a command is unavailable, say so. Do not silently skip failures. Distinguish pre-existing failures from new failures.
 
 ## Observability
-
 - Use structured logs and correlation/request IDs.
 - Track service errors, latency, queue failures, payment reconciliation, stock anomalies, and checkout conversion without collecting unnecessary personal data.
 - Add health/readiness checks appropriate to the deployment platform.
@@ -48,7 +43,6 @@ If a command is unavailable, say so. Do not silently skip failures. Distinguish 
 - Audit sensitive admin actions with actor, action, target, timestamp, and outcome. Do not log secrets.
 
 ## Release process
-
 1. Confirm scope, acceptance criteria, and owner approval.
 2. Review changes and migrations.
 3. Run all relevant quality gates.

@@ -65,11 +65,17 @@ const activeBrandName = computed(
         props.brands.find((b) => b.slug === props.filters.brand)?.name ?? null,
 );
 
+const activeStoreName = computed(
+    () =>
+        props.stores?.find((s) => s.slug === props.filters.store)?.name ?? null,
+);
+
 const hasActiveFilters = computed(
     () =>
         Boolean(props.filters.q) ||
         Boolean(props.filters.category) ||
         Boolean(props.filters.brand) ||
+        Boolean(props.filters.store) ||
         Boolean(props.filters.min_price) ||
         Boolean(props.filters.max_price) ||
         props.filters.in_stock,
@@ -89,6 +95,7 @@ function navigateWithFilters(
                 q: merged.q || undefined,
                 category: merged.category || undefined,
                 brand: merged.brand || undefined,
+                store: merged.store || undefined,
                 min_price: merged.min_price || undefined,
                 max_price: merged.max_price || undefined,
                 in_stock: merged.in_stock ? '1' : undefined,
@@ -204,6 +211,7 @@ function handleAddToCart(product: ProductSummary): void {
                                 id-prefix="mobile"
                                 :categories="categories"
                                 :brands="brands"
+                                :stores="stores"
                                 :filters="filters"
                                 @apply="navigateWithFilters"
                                 @reset="resetFilters"
@@ -307,6 +315,22 @@ function handleAddToCart(product: ProductSummary): void {
                 </Badge>
 
                 <Badge
+                    v-if="activeStoreName"
+                    variant="secondary"
+                    class="gap-1.5 py-1 pr-1.5 pl-3 text-xs"
+                >
+                    <span>Store: {{ activeStoreName }}</span>
+                    <button
+                        type="button"
+                        class="rounded-full p-0.5 hover:bg-background"
+                        aria-label="Clear store filter"
+                        @click="navigateWithFilters({ store: null })"
+                    >
+                        <X class="size-3.5" aria-hidden="true" />
+                    </button>
+                </Badge>
+
+                <Badge
                     v-if="filters.in_stock"
                     variant="secondary"
                     class="gap-1.5 py-1 pr-1.5 pl-3 text-xs"
@@ -333,6 +357,7 @@ function handleAddToCart(product: ProductSummary): void {
                         id-prefix="desktop"
                         :categories="categories"
                         :brands="brands"
+                        :stores="stores"
                         :filters="filters"
                         @apply="navigateWithFilters"
                         @reset="resetFilters"

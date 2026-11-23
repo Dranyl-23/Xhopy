@@ -49,6 +49,7 @@ final class InventoryReservationService
             StockMovement::query()->create([
                 'product_id' => $product->id,
                 'product_variant_id' => $variant->id,
+                'store_id' => $product->store_id,
                 'order_id' => $order->id,
                 'actor_id' => $actor?->id,
                 'type' => StockMovementType::Reserved,
@@ -79,6 +80,7 @@ final class InventoryReservationService
         StockMovement::query()->create([
             'product_id' => $product->id,
             'product_variant_id' => null,
+            'store_id' => $freshProduct->store_id,
             'order_id' => $order->id,
             'actor_id' => $actor?->id,
             'type' => StockMovementType::Reserved,
@@ -107,11 +109,12 @@ final class InventoryReservationService
                     ->whereKey($item->product_variant_id)
                     ->increment('stock_quantity', $item->quantity);
 
-                $freshVariant = ProductVariant::query()->find($item->product_variant_id);
+                $freshVariant = ProductVariant::query()->with('product')->find($item->product_variant_id);
                 if ($freshVariant instanceof ProductVariant) {
                     StockMovement::query()->create([
                         'product_id' => $item->product_id,
                         'product_variant_id' => $freshVariant->id,
+                        'store_id' => $freshVariant->product->store_id,
                         'order_id' => $order->id,
                         'actor_id' => $actor?->id,
                         'type' => StockMovementType::Released,
@@ -136,6 +139,7 @@ final class InventoryReservationService
                 StockMovement::query()->create([
                     'product_id' => $freshProduct->id,
                     'product_variant_id' => null,
+                    'store_id' => $freshProduct->store_id,
                     'order_id' => $order->id,
                     'actor_id' => $actor?->id,
                     'type' => StockMovementType::Released,
@@ -183,11 +187,12 @@ final class InventoryReservationService
             }
 
             if ($item->product_variant_id !== null) {
-                $variant = ProductVariant::query()->find($item->product_variant_id);
+                $variant = ProductVariant::query()->with('product')->find($item->product_variant_id);
                 if ($variant instanceof ProductVariant) {
                     StockMovement::query()->create([
                         'product_id' => $item->product_id,
                         'product_variant_id' => $variant->id,
+                        'store_id' => $variant->product->store_id,
                         'order_id' => $order->id,
                         'actor_id' => $actor?->id,
                         'type' => StockMovementType::Fulfilled,
@@ -206,6 +211,7 @@ final class InventoryReservationService
                 StockMovement::query()->create([
                     'product_id' => $product->id,
                     'product_variant_id' => null,
+                    'store_id' => $product->store_id,
                     'order_id' => $order->id,
                     'actor_id' => $actor?->id,
                     'type' => StockMovementType::Fulfilled,
@@ -257,6 +263,7 @@ final class InventoryReservationService
                 $movement = StockMovement::query()->create([
                     'product_id' => $product->id,
                     'product_variant_id' => $lockedVariant->id,
+                    'store_id' => $product->store_id,
                     'order_id' => null,
                     'actor_id' => $actor->id,
                     'type' => StockMovementType::Adjusted,
@@ -291,6 +298,7 @@ final class InventoryReservationService
             return StockMovement::query()->create([
                 'product_id' => $lockedProduct->id,
                 'product_variant_id' => null,
+                'store_id' => $lockedProduct->store_id,
                 'order_id' => null,
                 'actor_id' => $actor->id,
                 'type' => StockMovementType::Adjusted,
