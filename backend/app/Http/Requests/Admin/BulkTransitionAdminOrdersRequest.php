@@ -8,7 +8,7 @@ class BulkTransitionAdminOrdersRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->canManageCatalog() ?? false;
+        return $this->user()?->canManageOrders() ?? false;
     }
 
     /**

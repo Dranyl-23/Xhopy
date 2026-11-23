@@ -13,7 +13,10 @@ use App\Domain\Orders\Enums\OrderStatus;
 use App\Domain\Orders\Models\Order;
 use App\Domain\Orders\Models\OrderItem;
 use App\Domain\Orders\Models\OrderStatusHistory;
+use App\Domain\Orders\Models\SellerOrder;
 use App\Domain\Payments\Enums\PaymentStatus;
+use App\Domain\Seller\Enums\StoreStatus;
+use App\Domain\Seller\Models\Store;
 use App\Models\User;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -85,7 +88,9 @@ final class PlaceOrderAction
             }
 
             $subtotalCentavos = 0;
-            $preparedLines = [];
+            /** @var array<int, array{store: Store, centavos: int, lines: list<array{product: Product, variant: ProductVariant|null, quantity: int, unit_price: string, line_total: string}>}> $groupedByStore */
+            $groupedByStore = [];
+            $defaultFlagshipStore = null;
 
             foreach ($cartItems as $cartItem) {
                 /** @var Product|null $product */
@@ -101,6 +106,27 @@ final class PlaceOrderAction
                 ) {
                     throw ValidationException::withMessages([
                         'cart' => 'One or more items in your cart are no longer active for checkout.',
+                    ]);
+                }
+
+                $resolvedStore = $product->store;
+                if (! $resolvedStore instanceof Store) {
+                    if (! $defaultFlagshipStore instanceof Store) {
+                        /** @var Store|null $flagship */
+                        $flagship = Store::query()
+                            ->where('slug', 'xhopy-official')
+                            ->first();
+                        $defaultFlagshipStore = $flagship ?? Store::query()
+                            ->where('status', StoreStatus::Active->value)
+                            ->orderBy('id')
+                            ->first();
+                    }
+                    $resolvedStore = $defaultFlagshipStore;
+                }
+
+                if (! $resolvedStore instanceof Store || ! $resolvedStore->isActive()) {
+                    throw ValidationException::withMessages([
+                        'cart' => "Storefront for {$product->name} is currently unavailable.",
                     ]);
                 }
 
@@ -127,7 +153,17 @@ final class PlaceOrderAction
                 $lineCentavos = $unitCentavos * $cartItem->quantity;
                 $subtotalCentavos += $lineCentavos;
 
-                $preparedLines[] = [
+                $storeKey = $resolvedStore->id;
+                if (! isset($groupedByStore[$storeKey])) {
+                    $groupedByStore[$storeKey] = [
+                        'store' => $resolvedStore,
+                        'centavos' => 0,
+                        'lines' => [],
+                    ];
+                }
+
+                $groupedByStore[$storeKey]['centavos'] += $lineCentavos;
+                $groupedByStore[$storeKey]['lines'][] = [
                     'product' => $product,
                     'variant' => $variant,
                     'quantity' => $cartItem->quantity,
@@ -168,38 +204,74 @@ final class PlaceOrderAction
                 'expires_at' => $now->addHours(2),
             ]);
 
-            foreach ($preparedLines as $line) {
-                /** @var Product $lineProduct */
-                $lineProduct = $line['product'];
-                /** @var ProductVariant|null $lineVariant */
-                $lineVariant = $line['variant'];
+            $sequence = 1;
+            foreach ($groupedByStore as $group) {
+                $groupStore = $group['store'];
+                $groupDecimal = number_format($group['centavos'] / 100, 2, '.', '');
 
-                $this->inventoryReservation->reserveLine(
-                    product: $lineProduct,
-                    variant: $lineVariant,
-                    quantity: $line['quantity'],
-                    order: $order,
-                    actor: $user,
-                );
-
-                OrderItem::query()->create([
+                $sellerOrder = SellerOrder::query()->create([
                     'order_id' => $order->id,
-                    'product_id' => $lineProduct->id,
-                    'product_variant_id' => $lineVariant?->id,
-                    'seller_id' => $lineProduct->seller_id,
-                    'seller_name' => $lineProduct->seller_name,
-                    'product_name' => $lineProduct->name,
-                    'variant_title' => $lineVariant?->title,
-                    'sku' => $lineVariant !== null ? $lineVariant->sku : $lineProduct->sku,
-                    'currency' => $lineProduct->currency,
-                    'unit_price' => $line['unit_price'],
-                    'quantity' => $line['quantity'],
-                    'line_total' => $line['line_total'],
+                    'store_id' => $groupStore->id,
+                    'seller_order_number' => "{$orderNumber}-S{$sequence}",
+                    'seller_name' => $groupStore->name,
+                    'is_official_store' => (bool) $groupStore->is_official,
+                    'status' => OrderStatus::PendingPayment,
+                    'currency' => 'PHP',
+                    'subtotal_amount' => $groupDecimal,
+                    'shipping_amount' => '0.00',
+                    'discount_amount' => '0.00',
+                    'tax_amount' => '0.00',
+                    'total_amount' => $groupDecimal,
                 ]);
+
+                foreach ($group['lines'] as $line) {
+                    /** @var Product $lineProduct */
+                    $lineProduct = $line['product'];
+                    /** @var ProductVariant|null $lineVariant */
+                    $lineVariant = $line['variant'];
+
+                    $this->inventoryReservation->reserveLine(
+                        product: $lineProduct,
+                        variant: $lineVariant,
+                        quantity: $line['quantity'],
+                        order: $order,
+                        actor: $user,
+                    );
+
+                    OrderItem::query()->create([
+                        'order_id' => $order->id,
+                        'seller_order_id' => $sellerOrder->id,
+                        'product_id' => $lineProduct->id,
+                        'product_variant_id' => $lineVariant?->id,
+                        'seller_id' => $groupStore->owner_user_id ?? $lineProduct->seller_id,
+                        'store_id' => $groupStore->id,
+                        'seller_name' => $groupStore->name,
+                        'product_name' => $lineProduct->name,
+                        'variant_title' => $lineVariant?->title,
+                        'sku' => $lineVariant !== null ? $lineVariant->sku : $lineProduct->sku,
+                        'currency' => $lineProduct->currency,
+                        'unit_price' => $line['unit_price'],
+                        'quantity' => $line['quantity'],
+                        'line_total' => $line['line_total'],
+                    ]);
+                }
+
+                OrderStatusHistory::query()->create([
+                    'order_id' => $order->id,
+                    'seller_order_id' => $sellerOrder->id,
+                    'actor_id' => $user->id,
+                    'from_status' => null,
+                    'to_status' => OrderStatus::PendingPayment,
+                    'reason' => "Fulfillment suborder created for {$groupStore->name}.",
+                    'created_at' => $now,
+                ]);
+
+                $sequence++;
             }
 
             OrderStatusHistory::query()->create([
                 'order_id' => $order->id,
+                'seller_order_id' => null,
                 'actor_id' => $user->id,
                 'from_status' => null,
                 'to_status' => OrderStatus::PendingPayment,
@@ -209,7 +281,7 @@ final class PlaceOrderAction
 
             CartItem::query()->where('cart_id', $cart->id)->delete();
 
-            return $order->load(['items', 'statusHistory']);
+            return $order->load(['items', 'sellerOrders.items', 'statusHistory']);
         });
     }
 }

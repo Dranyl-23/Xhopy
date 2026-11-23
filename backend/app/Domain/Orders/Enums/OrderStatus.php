@@ -60,6 +60,27 @@ enum OrderStatus: string
         };
     }
 
+    /**
+     * Approved seller fulfillment transitions per owner Q4 rules:
+     * post-payment processing -> shipped -> delivered only; cancellations and refunds remain Admin-governed.
+     *
+     * @return list<self>
+     */
+    public function allowedSellerTransitions(): array
+    {
+        return match ($this) {
+            self::Paid => [self::Processing],
+            self::Processing => [self::Shipped],
+            self::Shipped => [self::Delivered],
+            self::PendingPayment, self::Delivered, self::Cancelled, self::Expired, self::Refunded => [],
+        };
+    }
+
+    public function canSellerTransitionTo(self $next): bool
+    {
+        return in_array($next, $this->allowedSellerTransitions(), true);
+    }
+
     public function releasesReservedStockWhenTransitionedTo(self $next): bool
     {
         return ($this === self::PendingPayment && in_array($next, [self::Cancelled, self::Expired], true))

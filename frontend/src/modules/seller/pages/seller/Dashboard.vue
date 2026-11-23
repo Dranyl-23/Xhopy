@@ -5,6 +5,7 @@ import {
     Boxes,
     Building2,
     CheckCircle2,
+    ClipboardList,
     Clock3,
     Package,
     ReceiptText,
@@ -27,6 +28,7 @@ import {
 } from '@shared/components/ui/card';
 import { onboarding as sellerOnboarding } from '@/routes/seller';
 import { index as sellerInventoryIndex } from '@/routes/seller/inventory';
+import { index as sellerOrdersIndex } from '@/routes/seller/orders';
 import {
     create as sellerProductsCreate,
     index as sellerProductsIndex,
@@ -88,6 +90,12 @@ defineProps<{
                     <Link :href="sellerProductsCreate()">
                         <Package class="size-4" aria-hidden="true" />
                         <span>Add Product</span>
+                    </Link>
+                </Button>
+                <Button as-child variant="outline" class="h-10 gap-1.5">
+                    <Link :href="sellerOrdersIndex()">
+                        <ClipboardList class="size-4" aria-hidden="true" />
+                        <span>Orders</span>
                     </Link>
                 </Button>
                 <Button as-child variant="outline" class="h-10 gap-1.5">
@@ -211,7 +219,7 @@ defineProps<{
 
             <Card>
                 <CardHeader class="pb-2">
-                    <CardDescription>Order Lines</CardDescription>
+                    <CardDescription>Store Suborders</CardDescription>
                     <CardTitle
                         class="flex items-center gap-2 text-2xl tabular-nums"
                     >
@@ -219,11 +227,18 @@ defineProps<{
                             class="size-5 text-primary"
                             aria-hidden="true"
                         />
-                        <span>{{ metrics.order_lines_count }}</span>
+                        <span>{{
+                            metrics.seller_orders_count ??
+                            metrics.order_lines_count
+                        }}</span>
                     </CardTitle>
                 </CardHeader>
                 <CardContent class="text-xs text-muted-foreground">
-                    Historical order items linked to this store.
+                    {{ metrics.pending_fulfillment_orders ?? 0 }} awaiting
+                    fulfillment
+                    <span v-if="metrics.confirmed_revenue_formatted">
+                        · {{ metrics.confirmed_revenue_formatted }} confirmed
+                    </span>
                 </CardContent>
             </Card>
         </div>

@@ -6,10 +6,12 @@ use App\Domain\Catalog\Services\MoneyFormatter;
 use App\Domain\Identity\Enums\SecurityAuditEvent;
 use App\Domain\Identity\Services\SecurityAuditLogger;
 use App\Domain\Orders\Actions\TransitionOrderStatusAction;
+use App\Domain\Orders\Actions\TransitionSellerOrderStatusAction;
 use App\Domain\Orders\Enums\OrderStatus;
 use App\Domain\Orders\Models\Order;
 use App\Domain\Orders\Models\OrderItem;
 use App\Domain\Orders\Models\OrderStatusHistory;
+use App\Domain\Orders\Models\SellerOrder;
 use App\Domain\Payments\Models\Payment;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\BulkTransitionAdminOrdersRequest;
@@ -37,7 +39,7 @@ class OrderController extends Controller
 
         $query = Order::query()
             ->with(['user:id,name,email'])
-            ->withCount('items')
+            ->withCount(['items', 'sellerOrders'])
             ->orderByDesc('id');
 
         if ($statusFilter instanceof OrderStatus) {
@@ -70,6 +72,7 @@ class OrderController extends Controller
                 'payment_status' => $order->payment_status->value,
                 'payment_status_label' => $order->payment_status->label(),
                 'items_count' => (int) ($order->getAttribute('items_count') ?? 0),
+                'seller_orders_count' => (int) ($order->getAttribute('seller_orders_count') ?? 0),
                 'total_formatted' => MoneyFormatter::format($order->total_amount, $order->currency),
                 'placed_at_diff' => $order->placed_at->diffForHumans(),
                 'can_advance_to_processing' => $order->status === OrderStatus::Paid,
@@ -103,7 +106,7 @@ class OrderController extends Controller
             abort(403);
         }
 
-        $order->load(['user:id,name,email,phone', 'items', 'statusHistory.actor:id,name', 'payments']);
+        $order->load(['user:id,name,email,phone', 'items', 'sellerOrders.items', 'statusHistory.actor:id,name', 'payments']);
 
         $allowedTransitions = array_map(
             static fn (OrderStatus $status): array => [
@@ -112,6 +115,42 @@ class OrderController extends Controller
             ],
             $order->status->allowedAdminTransitions($actor->isAdmin()),
         );
+
+        $mapItem = static fn (OrderItem $item): array => [
+            'id' => $item->id,
+            'product_name' => $item->product_name,
+            'variant_title' => $item->variant_title,
+            'sku' => $item->sku,
+            'seller_name' => $item->seller_name,
+            'quantity' => $item->quantity,
+            'unit_price_formatted' => MoneyFormatter::format($item->unit_price, $item->currency),
+            'line_total_formatted' => MoneyFormatter::format($item->line_total, $item->currency),
+        ];
+
+        $sellerOrders = $order->sellerOrders->map(static fn (SellerOrder $sellerOrder): array => [
+            'id' => $sellerOrder->id,
+            'seller_order_number' => $sellerOrder->seller_order_number,
+            'store_id' => $sellerOrder->store_id,
+            'seller_name' => $sellerOrder->seller_name,
+            'is_official_store' => $sellerOrder->is_official_store,
+            'status' => $sellerOrder->status->value,
+            'status_label' => $sellerOrder->status->label(),
+            'total_formatted' => MoneyFormatter::format($sellerOrder->total_amount, $sellerOrder->currency),
+            'shipping_carrier' => $sellerOrder->shipping_carrier,
+            'tracking_number' => $sellerOrder->tracking_number,
+            'shipped_at_diff' => $sellerOrder->shipped_at?->diffForHumans(),
+            'delivered_at_diff' => $sellerOrder->delivered_at?->diffForHumans(),
+            'cancelled_at_diff' => $sellerOrder->cancelled_at?->diffForHumans(),
+            'refunded_at_diff' => $sellerOrder->refunded_at?->diffForHumans(),
+            'allowed_transitions' => array_map(
+                static fn (OrderStatus $status): array => [
+                    'value' => $status->value,
+                    'label' => $status->label(),
+                ],
+                $sellerOrder->status->allowedAdminTransitions($actor->isAdmin()),
+            ),
+            'items' => $sellerOrder->items->map($mapItem)->values()->all(),
+        ])->values()->all();
 
         return Inertia::render('admin/orders/Show', [
             'order' => [
@@ -144,16 +183,8 @@ class OrderController extends Controller
                 'cancelled_at_diff' => $order->cancelled_at?->diffForHumans(),
                 'refunded_at_diff' => $order->refunded_at?->diffForHumans(),
                 'allowed_transitions' => $allowedTransitions,
-                'items' => $order->items->map(static fn (OrderItem $item): array => [
-                    'id' => $item->id,
-                    'product_name' => $item->product_name,
-                    'variant_title' => $item->variant_title,
-                    'sku' => $item->sku,
-                    'seller_name' => $item->seller_name,
-                    'quantity' => $item->quantity,
-                    'unit_price_formatted' => MoneyFormatter::format($item->unit_price, $item->currency),
-                    'line_total_formatted' => MoneyFormatter::format($item->line_total, $item->currency),
-                ])->values()->all(),
+                'seller_orders' => $sellerOrders,
+                'items' => $order->items->map($mapItem)->values()->all(),
                 'payments' => $order->payments->map(static fn (Payment $payment): array => [
                     'id' => $payment->id,
                     'provider' => $payment->provider,
@@ -231,6 +262,79 @@ class OrderController extends Controller
         Inertia::flash('toast', [
             'type' => 'success',
             'message' => __("Order {$updated->order_number} updated to {$updated->status->label()}."),
+        ]);
+
+        return back();
+    }
+
+    public function updateSellerOrderStatus(
+        TransitionAdminOrderRequest $request,
+        Order $order,
+        SellerOrder $sellerOrder,
+        TransitionSellerOrderStatusAction $transition,
+        SecurityAuditLogger $auditLogger,
+    ): RedirectResponse {
+        if ((int) $sellerOrder->order_id !== (int) $order->id) {
+            abort(404);
+        }
+
+        $actor = $request->user();
+        if (! $actor instanceof User) {
+            abort(403);
+        }
+
+        $nextStatus = OrderStatus::from((string) $request->validated('status'));
+
+        if ($nextStatus === OrderStatus::Refunded) {
+            Gate::authorize('refund', $order);
+        }
+
+        if (! $sellerOrder->status->canTransitionTo($nextStatus)) {
+            throw ValidationException::withMessages([
+                'status' => "Suborder {$sellerOrder->seller_order_number} cannot transition from {$sellerOrder->status->label()} to {$nextStatus->label()}.",
+            ]);
+        }
+
+        $previousStatus = $sellerOrder->status;
+        $reasonInput = is_string($request->validated('reason')) ? trim((string) $request->validated('reason')) : '';
+        $reason = $reasonInput !== '' ? $reasonInput : "Suborder updated to {$nextStatus->label()} by {$actor->name}.";
+
+        $updated = $transition->execute(
+            sellerOrder: $sellerOrder,
+            nextStatus: $nextStatus,
+            actor: $actor,
+            reason: $reason,
+            shippingCarrier: is_string($request->validated('shipping_carrier'))
+                ? (string) $request->validated('shipping_carrier')
+                : null,
+            trackingNumber: is_string($request->validated('tracking_number'))
+                ? (string) $request->validated('tracking_number')
+                : null,
+            asSeller: false,
+        );
+
+        $order->loadMissing('user');
+
+        $auditLogger->record(
+            event: SecurityAuditEvent::AdminSellerOrderStatusUpdated,
+            user: $order->user,
+            actor: $actor,
+            metadata: [
+                'order_id' => $order->id,
+                'order_number' => $order->order_number,
+                'seller_order_id' => $updated->id,
+                'seller_order_number' => $updated->seller_order_number,
+                'store_id' => $updated->store_id,
+                'from_status' => $previousStatus->value,
+                'to_status' => $updated->status->value,
+                'reason' => $reason,
+            ],
+            request: $request,
+        );
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => __("Suborder {$updated->seller_order_number} updated to {$updated->status->label()}."),
         ]);
 
         return back();

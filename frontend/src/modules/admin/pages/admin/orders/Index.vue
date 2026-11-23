@@ -272,6 +272,15 @@ function statusBadgeVariant(
                                                 ? 'item'
                                                 : 'items'
                                         }}
+                                        <span
+                                            v-if="
+                                                (order.seller_orders_count ??
+                                                    0) > 1
+                                            "
+                                        >
+                                            · {{ order.seller_orders_count }}
+                                            stores
+                                        </span>
                                     </p>
                                 </td>
                                 <td class="px-4 py-3.5">

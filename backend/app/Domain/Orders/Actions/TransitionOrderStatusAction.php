@@ -6,7 +6,9 @@ use App\Domain\Inventory\Services\InventoryReservationService;
 use App\Domain\Orders\Enums\OrderStatus;
 use App\Domain\Orders\Models\Order;
 use App\Domain\Orders\Models\OrderStatusHistory;
+use App\Domain\Orders\Models\SellerOrder;
 use App\Domain\Orders\Notifications\OrderStatusUpdatedNotification;
+use App\Domain\Orders\Services\OrderStateRollup;
 use App\Domain\Payments\Enums\PaymentStatus;
 use App\Models\User;
 use Illuminate\Support\Facades\Date;
@@ -17,6 +19,7 @@ final class TransitionOrderStatusAction
 {
     public function __construct(
         private readonly InventoryReservationService $inventoryReservation,
+        private readonly OrderStateRollup $stateRollup,
     ) {}
 
     public function execute(
@@ -58,67 +61,106 @@ final class TransitionOrderStatusAction
             }
 
             $now = Date::now();
-            $updates = [
-                'status' => $nextStatus,
-            ];
+            $suborders = SellerOrder::query()
+                ->with(['order', 'items'])
+                ->where('order_id', $lockedOrder->id)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
 
-            if ($nextPaymentStatus !== null) {
-                $updates['payment_status'] = $nextPaymentStatus;
-            }
+            if ($suborders->isEmpty()) {
+                $updates = $this->stateRollup->buildStatusUpdates(
+                    nextStatus: $nextStatus,
+                    now: $now,
+                    currentPaidAt: $lockedOrder->paid_at,
+                    currentShippedAt: $lockedOrder->shipped_at,
+                    currentDeliveredAt: $lockedOrder->delivered_at,
+                    currentCancelledAt: $lockedOrder->cancelled_at,
+                    currentRefundedAt: $lockedOrder->refunded_at,
+                    shippingCarrier: $shippingCarrier,
+                    trackingNumber: $trackingNumber,
+                    nextPaymentStatus: $nextPaymentStatus,
+                    includePaymentStatus: true,
+                );
 
-            if ($nextStatus === OrderStatus::Paid && $lockedOrder->paid_at === null) {
-                $updates['paid_at'] = $now;
-                $updates['payment_status'] = $nextPaymentStatus ?? PaymentStatus::Paid;
-            }
+                $lockedOrder->forceFill($updates)->save();
 
-            if ($nextStatus === OrderStatus::Shipped) {
-                if ($lockedOrder->shipped_at === null) {
-                    $updates['shipped_at'] = $now;
+                if ($currentStatus->releasesReservedStockWhenTransitionedTo($nextStatus)) {
+                    $this->inventoryReservation->releaseForOrder($lockedOrder, $actor);
                 }
 
-                $cleanCarrier = is_string($shippingCarrier) ? trim($shippingCarrier) : '';
-                $cleanTracking = is_string($trackingNumber) ? trim($trackingNumber) : '';
-                if ($cleanCarrier !== '') {
-                    $updates['shipping_carrier'] = mb_substr($cleanCarrier, 0, 80);
+                if ($nextStatus === OrderStatus::Delivered) {
+                    $this->inventoryReservation->markFulfilledForOrder($lockedOrder, $actor);
                 }
-                if ($cleanTracking !== '') {
-                    $updates['tracking_number'] = mb_substr($cleanTracking, 0, 120);
+
+                OrderStatusHistory::query()->create([
+                    'order_id' => $lockedOrder->id,
+                    'seller_order_id' => null,
+                    'actor_id' => $actor?->id,
+                    'from_status' => $currentStatus,
+                    'to_status' => $nextStatus,
+                    'reason' => $reason,
+                    'created_at' => $now,
+                ]);
+            } else {
+                foreach ($suborders as $suborder) {
+                    $subPreviousStatus = $suborder->status;
+                    if ($subPreviousStatus === $nextStatus || ! $subPreviousStatus->canTransitionTo($nextStatus)) {
+                        continue;
+                    }
+
+                    $subUpdates = $this->stateRollup->buildStatusUpdates(
+                        nextStatus: $nextStatus,
+                        now: $now,
+                        currentPaidAt: $suborder->paid_at,
+                        currentShippedAt: $suborder->shipped_at,
+                        currentDeliveredAt: $suborder->delivered_at,
+                        currentCancelledAt: $suborder->cancelled_at,
+                        currentRefundedAt: $suborder->refunded_at,
+                        shippingCarrier: $shippingCarrier,
+                        trackingNumber: $trackingNumber,
+                        includePaymentStatus: false,
+                    );
+
+                    $suborder->forceFill($subUpdates)->save();
+
+                    if ($subPreviousStatus->releasesReservedStockWhenTransitionedTo($nextStatus)) {
+                        $this->inventoryReservation->releaseForSellerOrder($suborder, $actor);
+                    }
+
+                    if ($nextStatus === OrderStatus::Delivered) {
+                        $this->inventoryReservation->markFulfilledForSellerOrder($suborder, $actor);
+                    }
+
+                    $subReason = $reason !== null && trim($reason) !== ''
+                        ? "{$suborder->seller_name} ({$suborder->seller_order_number}): ".trim($reason)
+                        : "{$suborder->seller_name} ({$suborder->seller_order_number}): Updated to {$nextStatus->label()}.";
+
+                    OrderStatusHistory::query()->create([
+                        'order_id' => $lockedOrder->id,
+                        'seller_order_id' => $suborder->id,
+                        'actor_id' => $actor?->id,
+                        'from_status' => $subPreviousStatus,
+                        'to_status' => $nextStatus,
+                        'reason' => $subReason,
+                        'created_at' => $now,
+                    ]);
+                }
+
+                $rolledStatus = $this->stateRollup->syncParentFromSellerOrders(
+                    lockedOrder: $lockedOrder,
+                    actor: $actor,
+                    triggerReason: $reason ?? "Order updated to {$nextStatus->label()}.",
+                );
+
+                if ($rolledStatus === null) {
+                    return $lockedOrder->refresh();
+                }
+
+                if ($nextPaymentStatus !== null && $lockedOrder->fresh()?->payment_status !== $nextPaymentStatus) {
+                    $lockedOrder->forceFill(['payment_status' => $nextPaymentStatus])->save();
                 }
             }
-
-            if ($nextStatus === OrderStatus::Delivered && $lockedOrder->delivered_at === null) {
-                $updates['delivered_at'] = $now;
-            }
-
-            if ($nextStatus === OrderStatus::Refunded) {
-                if ($lockedOrder->refunded_at === null) {
-                    $updates['refunded_at'] = $now;
-                }
-                $updates['payment_status'] = $nextPaymentStatus ?? PaymentStatus::Refunded;
-            }
-
-            if (in_array($nextStatus, [OrderStatus::Cancelled, OrderStatus::Expired], true) && $lockedOrder->cancelled_at === null) {
-                $updates['cancelled_at'] = $now;
-            }
-
-            $lockedOrder->forceFill($updates)->save();
-
-            if ($currentStatus->releasesReservedStockWhenTransitionedTo($nextStatus)) {
-                $this->inventoryReservation->releaseForOrder($lockedOrder, $actor);
-            }
-
-            if ($nextStatus === OrderStatus::Delivered) {
-                $this->inventoryReservation->markFulfilledForOrder($lockedOrder, $actor);
-            }
-
-            OrderStatusHistory::query()->create([
-                'order_id' => $lockedOrder->id,
-                'actor_id' => $actor?->id,
-                'from_status' => $currentStatus,
-                'to_status' => $nextStatus,
-                'reason' => $reason,
-                'created_at' => $now,
-            ]);
 
             $transitionedFrom = $currentStatus;
 

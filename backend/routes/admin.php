@@ -76,6 +76,9 @@ Route::middleware(['auth', 'verified', 'can:manage-orders', EnsurePrivilegedMfa:
         Route::patch('/{order}/status', [AdminOrderController::class, 'updateStatus'])
             ->whereNumber('order')
             ->name('status.update');
+        Route::patch('/{order}/seller-orders/{sellerOrder}/status', [AdminOrderController::class, 'updateSellerOrderStatus'])
+            ->whereNumber(['order', 'sellerOrder'])
+            ->name('seller-orders.status.update');
     });
 
 Route::middleware(['auth', 'verified', 'can:manage-inventory', EnsurePrivilegedMfa::class])

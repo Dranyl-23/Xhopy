@@ -217,6 +217,7 @@ export interface AdminOrderListRow {
     payment_status: string;
     payment_status_label: string;
     items_count: number;
+    seller_orders_count?: number;
     total_formatted: string;
     placed_at_diff: string;
     can_advance_to_processing: boolean;
@@ -252,6 +253,33 @@ export interface AdminOrderDetail {
     cancelled_at_diff: string | null;
     refunded_at_diff: string | null;
     allowed_transitions: AdminStatusOption[];
+    seller_orders?: Array<{
+        id: number;
+        seller_order_number: string;
+        store_id: number;
+        seller_name: string;
+        is_official_store: boolean;
+        status: string;
+        status_label: string;
+        total_formatted: string;
+        shipping_carrier: string | null;
+        tracking_number: string | null;
+        shipped_at_diff: string | null;
+        delivered_at_diff: string | null;
+        cancelled_at_diff: string | null;
+        refunded_at_diff: string | null;
+        allowed_transitions: AdminStatusOption[];
+        items: Array<{
+            id: number;
+            product_name: string;
+            variant_title: string | null;
+            sku: string;
+            seller_name: string;
+            quantity: number;
+            unit_price_formatted: string;
+            line_total_formatted: string;
+        }>;
+    }>;
     items: Array<{
         id: number;
         product_name: string;

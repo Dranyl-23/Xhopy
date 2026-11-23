@@ -7,6 +7,8 @@ use App\Domain\Catalog\Models\ProductVariant;
 use App\Domain\Inventory\Enums\StockMovementType;
 use App\Domain\Inventory\Models\StockMovement;
 use App\Domain\Orders\Models\Order;
+use App\Domain\Orders\Models\OrderItem;
+use App\Domain\Orders\Models\SellerOrder;
 use App\Models\User;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -97,6 +99,24 @@ final class InventoryReservationService
     public function releaseForOrder(Order $order, ?User $actor = null): void
     {
         $items = $order->items()->orderBy('product_id')->orderBy('product_variant_id')->get();
+        $this->releaseItems($items, $order, $actor, $order->order_number);
+    }
+
+    /**
+     * Atomically release reserved inventory strictly belonging to a specific seller suborder.
+     */
+    public function releaseForSellerOrder(SellerOrder $sellerOrder, ?User $actor = null): void
+    {
+        $sellerOrder->loadMissing('order');
+        $items = $sellerOrder->items()->orderBy('product_id')->orderBy('product_variant_id')->get();
+        $this->releaseItems($items, $sellerOrder->order, $actor, $sellerOrder->seller_order_number);
+    }
+
+    /**
+     * @param  iterable<int, OrderItem>  $items
+     */
+    private function releaseItems(iterable $items, Order $order, ?User $actor, string $reference): void
+    {
         $now = Date::now();
 
         foreach ($items as $item) {
@@ -120,7 +140,7 @@ final class InventoryReservationService
                         'type' => StockMovementType::Released,
                         'quantity_delta' => $item->quantity,
                         'stock_after' => (int) $freshVariant->stock_quantity,
-                        'reference' => $order->order_number,
+                        'reference' => $reference,
                         'created_at' => $now,
                     ]);
                 }
@@ -145,7 +165,7 @@ final class InventoryReservationService
                     'type' => StockMovementType::Released,
                     'quantity_delta' => $item->quantity,
                     'stock_after' => (int) $freshProduct->stock_quantity,
-                    'reference' => $order->order_number,
+                    'reference' => $reference,
                     'created_at' => $now,
                 ]);
             }
@@ -165,13 +185,33 @@ final class InventoryReservationService
     }
 
     /**
-     * Record a zero-delta fulfillment milestone ledger entry when an order reaches delivery completion.
+     * Record zero-delta fulfillment milestone ledger entries when an order reaches delivery completion.
      */
     public function markFulfilledForOrder(Order $order, ?User $actor = null): void
+    {
+        $items = $order->items()->orderBy('product_id')->orderBy('product_variant_id')->get();
+        $this->markFulfilledItems($items, $order, $actor, $order->order_number);
+    }
+
+    /**
+     * Record a zero-delta fulfillment milestone ledger entry for an individual seller suborder.
+     */
+    public function markFulfilledForSellerOrder(SellerOrder $sellerOrder, ?User $actor = null): void
+    {
+        $sellerOrder->loadMissing('order');
+        $items = $sellerOrder->items()->orderBy('product_id')->orderBy('product_variant_id')->get();
+        $this->markFulfilledItems($items, $sellerOrder->order, $actor, $sellerOrder->seller_order_number);
+    }
+
+    /**
+     * @param  iterable<int, OrderItem>  $items
+     */
+    private function markFulfilledItems(iterable $items, Order $order, ?User $actor, string $reference): void
     {
         $alreadyRecorded = StockMovement::query()
             ->where('order_id', $order->id)
             ->where('type', StockMovementType::Fulfilled->value)
+            ->where('reference', $reference)
             ->exists();
 
         if ($alreadyRecorded) {
@@ -179,7 +219,6 @@ final class InventoryReservationService
         }
 
         $now = Date::now();
-        $items = $order->items()->orderBy('product_id')->orderBy('product_variant_id')->get();
 
         foreach ($items as $item) {
             if ($item->product_id === null) {
@@ -198,7 +237,7 @@ final class InventoryReservationService
                         'type' => StockMovementType::Fulfilled,
                         'quantity_delta' => 0,
                         'stock_after' => (int) $variant->stock_quantity,
-                        'reference' => $order->order_number,
+                        'reference' => $reference,
                         'created_at' => $now,
                     ]);
                 }
@@ -217,7 +256,7 @@ final class InventoryReservationService
                     'type' => StockMovementType::Fulfilled,
                     'quantity_delta' => 0,
                     'stock_after' => (int) $product->stock_quantity,
-                    'reference' => $order->order_number,
+                    'reference' => $reference,
                     'created_at' => $now,
                 ]);
             }

@@ -39,6 +39,8 @@ enum SecurityAuditEvent: string
     case AdminProductRejected = 'admin.product_rejected';
     case SellerInventoryAdjusted = 'seller.inventory_adjusted';
     case SellerInventoryBulkImported = 'seller.inventory_imported';
+    case SellerOrderStatusUpdated = 'seller.order_status_updated';
+    case AdminSellerOrderStatusUpdated = 'admin.seller_order_status_updated';
 
     public function label(): string
     {
@@ -78,6 +80,8 @@ enum SecurityAuditEvent: string
             self::AdminProductRejected => 'Admin requested changes on product listing',
             self::SellerInventoryAdjusted => 'Seller adjusted store inventory stock',
             self::SellerInventoryBulkImported => 'Seller imported store inventory CSV',
+            self::SellerOrderStatusUpdated => 'Seller updated store fulfillment status',
+            self::AdminSellerOrderStatusUpdated => 'Admin updated seller suborder status',
         };
     }
 }

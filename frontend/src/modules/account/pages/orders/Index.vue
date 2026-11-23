@@ -177,6 +177,9 @@ function statusBadgeVariant(
                             Placed {{ order.placed_at_diff }} ·
                             {{ order.items_count }}
                             {{ order.items_count === 1 ? 'item' : 'items' }}
+                            <span v-if="(order.seller_orders_count ?? 0) > 1">
+                                · {{ order.seller_orders_count }} stores
+                            </span>
                         </CardDescription>
                     </div>
 

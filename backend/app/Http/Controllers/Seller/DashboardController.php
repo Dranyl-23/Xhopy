@@ -4,7 +4,10 @@ namespace App\Http\Controllers\Seller;
 
 use App\Domain\Catalog\Enums\ProductStatus;
 use App\Domain\Catalog\Models\Product;
+use App\Domain\Catalog\Services\MoneyFormatter;
+use App\Domain\Orders\Enums\OrderStatus;
 use App\Domain\Orders\Models\OrderItem;
+use App\Domain\Orders\Models\SellerOrder;
 use App\Domain\Seller\Models\SellerProfile;
 use App\Domain\Seller\Models\Store;
 use App\Http\Controllers\Controller;
@@ -49,6 +52,28 @@ class DashboardController extends Controller
             ->where('stock_quantity', '<=', 5)
             ->count();
         $orderLinesCount = OrderItem::query()->where('store_id', $store->id)->count();
+        $sellerOrdersCount = SellerOrder::query()->where('store_id', $store->id)->count();
+        $pendingFulfillmentOrders = SellerOrder::query()
+            ->where('store_id', $store->id)
+            ->whereIn('status', [OrderStatus::Paid->value, OrderStatus::Processing->value])
+            ->count();
+        $shippedOrdersCount = SellerOrder::query()
+            ->where('store_id', $store->id)
+            ->where('status', OrderStatus::Shipped->value)
+            ->count();
+        $deliveredOrdersCount = SellerOrder::query()
+            ->where('store_id', $store->id)
+            ->where('status', OrderStatus::Delivered->value)
+            ->count();
+        $confirmedRevenue = (string) (SellerOrder::query()
+            ->where('store_id', $store->id)
+            ->whereIn('status', [
+                OrderStatus::Paid->value,
+                OrderStatus::Processing->value,
+                OrderStatus::Shipped->value,
+                OrderStatus::Delivered->value,
+            ])
+            ->sum('total_amount') ?: '0.00');
 
         return Inertia::render('seller/Dashboard', [
             'store' => [
@@ -76,6 +101,11 @@ class DashboardController extends Controller
                 'rejected_products' => $rejectedProducts,
                 'low_stock_products' => $lowStockProducts,
                 'order_lines_count' => $orderLinesCount,
+                'seller_orders_count' => $sellerOrdersCount,
+                'pending_fulfillment_orders' => $pendingFulfillmentOrders,
+                'shipped_orders' => $shippedOrdersCount,
+                'delivered_orders' => $deliveredOrdersCount,
+                'confirmed_revenue_formatted' => MoneyFormatter::format($confirmedRevenue, 'PHP'),
             ],
         ]);
     }

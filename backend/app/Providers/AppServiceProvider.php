@@ -11,7 +11,9 @@ use App\Domain\Customer\Policies\CustomerAddressPolicy;
 use App\Domain\Customer\Policies\WishlistItemPolicy;
 use App\Domain\Identity\Listeners\RecordSecurityAuditEvents;
 use App\Domain\Orders\Models\Order;
+use App\Domain\Orders\Models\SellerOrder;
 use App\Domain\Orders\Policies\OrderPolicy;
+use App\Domain\Orders\Policies\SellerOrderPolicy;
 use App\Domain\Payments\Contracts\PaymentGateway;
 use App\Domain\Payments\Gateways\PayMongoGateway;
 use App\Domain\Seller\Models\SellerProfile;
@@ -80,6 +82,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(CustomerAddress::class, CustomerAddressPolicy::class);
         Gate::policy(WishlistItem::class, WishlistItemPolicy::class);
         Gate::policy(Order::class, OrderPolicy::class);
+        Gate::policy(SellerOrder::class, SellerOrderPolicy::class);
         Gate::policy(SellerProfile::class, SellerProfilePolicy::class);
 
         Gate::define('manage-catalog', static function (User $user): bool {

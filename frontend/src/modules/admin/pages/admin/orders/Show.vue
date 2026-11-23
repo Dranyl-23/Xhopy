@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import {
     AlertTriangle,
     ArrowLeft,
@@ -7,9 +7,10 @@ import {
     History,
     MapPin,
     Package,
+    Store,
     Truck,
 } from '@lucide/vue';
-import { computed, ref } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import InputError from '@shared/components/InputError.vue';
 import {
     Alert,
@@ -31,6 +32,7 @@ import { SelectField } from '@shared/components/ui/select';
 import { Separator } from '@shared/components/ui/separator';
 import { dashboard } from '@/routes';
 import { index as adminOrdersIndex } from '@/routes/admin/orders';
+import { update as adminSellerOrderStatusUpdate } from '@/routes/admin/orders/seller-orders/status';
 import { update as adminOrderStatusUpdate } from '@/routes/admin/orders/status';
 import type { AdminOrderDetail } from '@modules/admin/types';
 
@@ -86,6 +88,64 @@ function submitTransition(): void {
             form.reason = '';
         },
     });
+}
+
+interface SuborderDraft {
+    status: string;
+    shipping_carrier: string;
+    tracking_number: string;
+    reason: string;
+    processing: boolean;
+}
+
+const suborderDrafts = reactive<Record<number, SuborderDraft>>({});
+
+function syncSuborderDrafts(): void {
+    for (const suborder of props.order.seller_orders ?? []) {
+        const existing = suborderDrafts[suborder.id];
+        const firstStatus = suborder.allowed_transitions[0]?.value ?? '';
+        if (!existing) {
+            suborderDrafts[suborder.id] = {
+                status: firstStatus,
+                shipping_carrier: suborder.shipping_carrier ?? '',
+                tracking_number: suborder.tracking_number ?? '',
+                reason: '',
+                processing: false,
+            };
+        } else {
+            existing.status = firstStatus;
+            existing.shipping_carrier = suborder.shipping_carrier ?? '';
+            existing.tracking_number = suborder.tracking_number ?? '';
+            existing.reason = '';
+        }
+    }
+}
+
+syncSuborderDrafts();
+watch(() => props.order.seller_orders, syncSuborderDrafts, { deep: true });
+
+function submitSuborderTransition(suborderId: number): void {
+    const draft = suborderDrafts[suborderId];
+    if (!draft || !draft.status || draft.processing) {
+        return;
+    }
+
+    draft.processing = true;
+    router.patch(
+        adminSellerOrderStatusUpdate.url([props.order.id, suborderId]),
+        {
+            status: draft.status,
+            shipping_carrier: draft.shipping_carrier || undefined,
+            tracking_number: draft.tracking_number || undefined,
+            reason: draft.reason || undefined,
+        },
+        {
+            preserveScroll: true,
+            onFinish: () => {
+                draft.processing = false;
+            },
+        },
+    );
 }
 </script>
 
@@ -223,6 +283,156 @@ function submitTransition(): void {
                                 Update Order Status
                             </Button>
                         </form>
+                    </CardContent>
+                </Card>
+
+                <Card v-if="(order.seller_orders?.length ?? 0) > 0">
+                    <CardHeader>
+                        <CardTitle class="flex items-center gap-2 text-base">
+                            <Store
+                                class="size-4 text-primary"
+                                aria-hidden="true"
+                            />
+                            <span>Seller Fulfillment Groups (Suborders)</span>
+                        </CardTitle>
+                        <CardDescription>
+                            Manage or govern individual seller suborders
+                            independently (including post-payment cancellations
+                            and refunds). Parent order status rolls up
+                            automatically.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent class="space-y-4">
+                        <div
+                            v-for="suborder in order.seller_orders"
+                            :key="suborder.id"
+                            class="space-y-3 rounded-xl border border-border bg-secondary/20 p-4"
+                        >
+                            <div
+                                class="flex flex-wrap items-center justify-between gap-2"
+                            >
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span class="font-bold text-foreground">{{
+                                        suborder.seller_name
+                                    }}</span>
+                                    <Badge
+                                        v-if="suborder.is_official_store"
+                                        variant="default"
+                                        class="text-[10px] uppercase"
+                                    >
+                                        Official
+                                    </Badge>
+                                    <span
+                                        class="font-mono text-xs text-muted-foreground"
+                                    >
+                                        {{ suborder.seller_order_number }}
+                                    </span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <Badge>{{ suborder.status_label }}</Badge>
+                                    <span
+                                        class="text-sm font-bold text-foreground tabular-nums"
+                                    >
+                                        {{ suborder.total_formatted }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div
+                                v-if="
+                                    suborder.shipping_carrier ||
+                                    suborder.tracking_number
+                                "
+                                class="text-xs text-muted-foreground"
+                            >
+                                <span v-if="suborder.shipping_carrier">
+                                    Carrier:
+                                    <strong class="text-foreground">{{
+                                        suborder.shipping_carrier
+                                    }}</strong>
+                                </span>
+                                <span v-if="suborder.tracking_number">
+                                    · Tracking #:
+                                    <strong class="text-foreground">{{
+                                        suborder.tracking_number
+                                    }}</strong>
+                                </span>
+                            </div>
+
+                            <form
+                                v-if="
+                                    suborder.allowed_transitions.length > 0 &&
+                                    suborderDrafts[suborder.id]
+                                "
+                                class="grid gap-3 border-t border-border/70 pt-3 sm:grid-cols-4 sm:items-end"
+                                @submit.prevent="
+                                    submitSuborderTransition(suborder.id)
+                                "
+                            >
+                                <div class="space-y-1">
+                                    <Label
+                                        :for="`suborder-${suborder.id}-status`"
+                                        class="text-xs"
+                                    >
+                                        Action
+                                    </Label>
+                                    <SelectField
+                                        :id="`suborder-${suborder.id}-status`"
+                                        v-model="
+                                            suborderDrafts[suborder.id].status
+                                        "
+                                        :options="suborder.allowed_transitions"
+                                        aria-label="Select suborder transition"
+                                    />
+                                </div>
+                                <div class="space-y-1">
+                                    <Label
+                                        :for="`suborder-${suborder.id}-carrier`"
+                                        class="text-xs"
+                                    >
+                                        Carrier
+                                    </Label>
+                                    <Input
+                                        :id="`suborder-${suborder.id}-carrier`"
+                                        v-model="
+                                            suborderDrafts[suborder.id]
+                                                .shipping_carrier
+                                        "
+                                        placeholder="Courier"
+                                        class="h-10"
+                                    />
+                                </div>
+                                <div class="space-y-1">
+                                    <Label
+                                        :for="`suborder-${suborder.id}-reason`"
+                                        class="text-xs"
+                                    >
+                                        Note
+                                    </Label>
+                                    <Input
+                                        :id="`suborder-${suborder.id}-reason`"
+                                        v-model="
+                                            suborderDrafts[suborder.id].reason
+                                        "
+                                        placeholder="Admin reason..."
+                                        class="h-10"
+                                    />
+                                </div>
+                                <Button
+                                    type="submit"
+                                    variant="outline"
+                                    size="sm"
+                                    class="h-10"
+                                    :disabled="
+                                        suborderDrafts[suborder.id]
+                                            .processing ||
+                                        !suborderDrafts[suborder.id].status
+                                    "
+                                >
+                                    Apply Suborder
+                                </Button>
+                            </form>
+                        </div>
                     </CardContent>
                 </Card>
 

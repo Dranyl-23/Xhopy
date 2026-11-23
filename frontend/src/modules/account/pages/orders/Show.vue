@@ -6,6 +6,8 @@ import {
     History,
     MapPin,
     Package,
+    Store,
+    Truck,
     XCircle,
 } from '@lucide/vue';
 import { ref } from 'vue';
@@ -179,14 +181,159 @@ void orderShow;
                                 aria-hidden="true"
                             />
                             <span>Order Items Snapshot</span>
+                            <Badge
+                                v-if="(order.seller_orders?.length ?? 0) > 1"
+                                variant="outline"
+                                class="text-[11px]"
+                            >
+                                {{ order.seller_orders?.length }} stores
+                            </Badge>
                         </CardTitle>
                         <CardDescription>
                             Prices and product details frozen at order
                             placement.
+                            <span v-if="(order.seller_orders?.length ?? 0) > 1">
+                                Each seller fulfills and ships their suborder
+                                independently.
+                            </span>
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <ul class="divide-y divide-border text-sm">
+                        <div
+                            v-if="(order.seller_orders?.length ?? 0) > 0"
+                            class="space-y-4"
+                        >
+                            <section
+                                v-for="group in order.seller_orders"
+                                :key="group.id"
+                                :aria-label="`Fulfillment group ${group.seller_order_number}`"
+                                class="overflow-hidden rounded-xl border border-border"
+                            >
+                                <header
+                                    class="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-secondary/35 px-4 py-3"
+                                >
+                                    <div
+                                        class="flex min-w-0 flex-wrap items-center gap-2"
+                                    >
+                                        <Store
+                                            class="size-4 shrink-0 text-primary"
+                                            aria-hidden="true"
+                                        />
+                                        <Link
+                                            v-if="group.store_url"
+                                            :href="group.store_url"
+                                            class="truncate text-sm font-bold text-foreground hover:text-primary"
+                                        >
+                                            {{ group.seller_name }}
+                                        </Link>
+                                        <span
+                                            v-else
+                                            class="truncate text-sm font-bold text-foreground"
+                                        >
+                                            {{ group.seller_name }}
+                                        </span>
+                                        <Badge
+                                            v-if="group.is_official_store"
+                                            variant="default"
+                                            class="px-1.5 py-0 text-[10px] tracking-wide uppercase"
+                                        >
+                                            Official
+                                        </Badge>
+                                        <span
+                                            class="font-mono text-xs text-muted-foreground"
+                                        >
+                                            {{ group.seller_order_number }}
+                                        </span>
+                                    </div>
+
+                                    <div class="flex items-center gap-2.5">
+                                        <Badge
+                                            :variant="
+                                                statusBadgeVariant(group.status)
+                                            "
+                                        >
+                                            {{ group.status_label }}
+                                        </Badge>
+                                        <span
+                                            class="text-xs font-bold text-foreground tabular-nums"
+                                        >
+                                            {{ group.total_formatted }}
+                                        </span>
+                                    </div>
+                                </header>
+
+                                <div
+                                    v-if="
+                                        group.shipping_carrier ||
+                                        group.tracking_number
+                                    "
+                                    class="flex flex-wrap items-center gap-2 border-b border-border bg-secondary/15 px-4 py-2 text-xs text-muted-foreground"
+                                >
+                                    <Truck
+                                        class="size-3.5 text-primary"
+                                        aria-hidden="true"
+                                    />
+                                    <span v-if="group.shipping_carrier">
+                                        Carrier:
+                                        <strong class="text-foreground">{{
+                                            group.shipping_carrier
+                                        }}</strong>
+                                    </span>
+                                    <span v-if="group.tracking_number">
+                                        Tracking #:
+                                        <strong class="text-foreground">{{
+                                            group.tracking_number
+                                        }}</strong>
+                                    </span>
+                                    <span v-if="group.shipped_at_diff">
+                                        · Shipped {{ group.shipped_at_diff }}
+                                    </span>
+                                    <span v-if="group.delivered_at_diff">
+                                        · Delivered
+                                        {{ group.delivered_at_diff }}
+                                    </span>
+                                </div>
+
+                                <ul class="divide-y divide-border px-4 text-sm">
+                                    <li
+                                        v-for="item in group.items"
+                                        :key="item.id"
+                                        class="flex items-start justify-between gap-4 py-3"
+                                    >
+                                        <div class="min-w-0 space-y-0.5">
+                                            <p
+                                                class="font-semibold text-foreground"
+                                            >
+                                                {{ item.product_name }}
+                                            </p>
+                                            <p
+                                                class="text-xs text-muted-foreground"
+                                            >
+                                                <span v-if="item.variant_title"
+                                                    >{{
+                                                        item.variant_title
+                                                    }}
+                                                    · </span
+                                                >SKU {{ item.sku }}
+                                            </p>
+                                            <p
+                                                class="text-xs text-muted-foreground"
+                                            >
+                                                {{ item.quantity }} &times;
+                                                {{ item.unit_price_formatted }}
+                                            </p>
+                                        </div>
+                                        <span
+                                            class="shrink-0 font-bold text-foreground tabular-nums"
+                                        >
+                                            {{ item.line_total_formatted }}
+                                        </span>
+                                    </li>
+                                </ul>
+                            </section>
+                        </div>
+
+                        <ul v-else class="divide-y divide-border text-sm">
                             <li
                                 v-for="item in order.items"
                                 :key="item.id"

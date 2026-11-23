@@ -3,6 +3,7 @@ import { Link, usePage } from '@inertiajs/vue3';
 import {
     Boxes,
     Building2,
+    ClipboardList,
     LayoutGrid,
     Package,
     Settings,
@@ -30,6 +31,7 @@ import {
     onboarding as sellerOnboarding,
 } from '@/routes/seller';
 import { index as sellerInventoryIndex } from '@/routes/seller/inventory';
+import { index as sellerOrdersIndex } from '@/routes/seller/orders';
 import { index as sellerProductsIndex } from '@/routes/seller/products';
 import { edit as sellerStoreEdit } from '@/routes/seller/store';
 import type { NavItem } from '@shared/types';
@@ -66,6 +68,11 @@ const storeNavItems = computed<NavItem[]>(() => {
                 title: 'Inventory & CSV',
                 href: sellerInventoryIndex(),
                 icon: Boxes,
+            },
+            {
+                title: 'Orders & Fulfillment',
+                href: sellerOrdersIndex(),
+                icon: ClipboardList,
             },
         );
     }

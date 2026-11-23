@@ -53,6 +53,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property CarbonImmutable|null $updated_at
  * @property-read User $user
  * @property-read CustomerAddress|null $customerAddress
+ * @property-read Collection<int, SellerOrder> $sellerOrders
  * @property-read Collection<int, OrderItem> $items
  * @property-read Collection<int, OrderStatusHistory> $statusHistory
  * @property-read Collection<int, Payment> $payments
@@ -133,6 +134,14 @@ class Order extends Model
     public function customerAddress(): BelongsTo
     {
         return $this->belongsTo(CustomerAddress::class);
+    }
+
+    /**
+     * @return HasMany<SellerOrder, $this>
+     */
+    public function sellerOrders(): HasMany
+    {
+        return $this->hasMany(SellerOrder::class)->orderBy('id');
     }
 
     /**

@@ -3,6 +3,7 @@
 use App\Http\Controllers\Seller\DashboardController;
 use App\Http\Controllers\Seller\InventoryController;
 use App\Http\Controllers\Seller\OnboardingController;
+use App\Http\Controllers\Seller\OrderController as SellerOrderController;
 use App\Http\Controllers\Seller\ProductController;
 use App\Http\Controllers\Seller\ProductImageController;
 use App\Http\Controllers\Seller\StoreProfileController;
@@ -60,6 +61,16 @@ Route::middleware(['auth', 'verified'])
                 Route::post('/adjust', [InventoryController::class, 'adjust'])->name('adjust');
                 Route::post('/import', [InventoryController::class, 'importCsv'])->name('import');
                 Route::get('/template', [InventoryController::class, 'template'])->name('template');
+            });
+
+            Route::prefix('orders')->name('orders.')->group(function (): void {
+                Route::get('/', [SellerOrderController::class, 'index'])->name('index');
+                Route::get('/{sellerOrder}', [SellerOrderController::class, 'show'])
+                    ->whereNumber('sellerOrder')
+                    ->name('show');
+                Route::patch('/{sellerOrder}/status', [SellerOrderController::class, 'updateStatus'])
+                    ->whereNumber('sellerOrder')
+                    ->name('status.update');
             });
         });
     });

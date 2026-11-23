@@ -89,8 +89,30 @@ export interface OrderListItem {
     payment_status: string;
     payment_status_label: string;
     items_count: number;
+    seller_orders_count?: number;
     total_formatted: string;
     placed_at_diff: string;
+}
+
+export interface CustomerSellerOrderGroup {
+    id: number;
+    seller_order_number: string;
+    seller_name: string;
+    store_slug: string | null;
+    store_url: string | null;
+    is_official_store: boolean;
+    status: string;
+    status_label: string;
+    subtotal_formatted: string;
+    shipping_formatted: string;
+    total_formatted: string;
+    shipping_carrier: string | null;
+    tracking_number: string | null;
+    shipped_at_diff: string | null;
+    delivered_at_diff: string | null;
+    cancelled_at_diff: string | null;
+    refunded_at_diff: string | null;
+    items: OrderSnapshotItem[];
 }
 
 export interface OrderSnapshotItem {
@@ -136,6 +158,7 @@ export interface OrderDetailRecord {
     can_cancel: boolean;
     can_retry_payment: boolean;
     payment_method_type: string | null;
+    seller_orders?: CustomerSellerOrderGroup[];
     items: OrderSnapshotItem[];
     status_history: OrderStatusHistoryEntry[];
 }

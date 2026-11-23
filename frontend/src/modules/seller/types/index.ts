@@ -78,6 +78,11 @@ export interface SellerDashboardMetrics {
     rejected_products: number;
     low_stock_products: number;
     order_lines_count: number;
+    seller_orders_count?: number;
+    pending_fulfillment_orders?: number;
+    shipped_orders?: number;
+    delivered_orders?: number;
+    confirmed_revenue_formatted?: string;
 }
 
 export interface SellerProductRow {
@@ -214,4 +219,95 @@ export interface SellerStockMovementRow {
     order_number: string | null;
     actor_name: string;
     created_at_diff: string;
+}
+
+export interface SellerOrderListRow {
+    id: number;
+    seller_order_number: string;
+    parent_order_number: string;
+    status: string;
+    status_label: string;
+    payment_status: string;
+    payment_status_label: string;
+    recipient_name: string;
+    destination_city: string;
+    items_count: number;
+    total_formatted: string;
+    shipping_carrier: string | null;
+    tracking_number: string | null;
+    placed_at_diff: string;
+    next_seller_status: string | null;
+    next_seller_status_label: string | null;
+}
+
+export interface SellerOrdersIndexProps {
+    store: {
+        id: number;
+        name: string;
+        slug: string;
+    };
+    sellerOrders: {
+        data: SellerOrderListRow[];
+        current_page: number;
+        last_page: number;
+        per_page: number;
+        total: number;
+    };
+    statuses: SellerSelectOption[];
+    filters: {
+        q: string;
+        status: string;
+    };
+    stats: {
+        totalOrders: number;
+        toFulfillCount: number;
+        shippedCount: number;
+        deliveredCount: number;
+        confirmedRevenueFormatted: string;
+    };
+}
+
+export interface SellerOrderDetail {
+    id: number;
+    seller_order_number: string;
+    parent_order_number: string;
+    seller_name: string;
+    is_official_store: boolean;
+    status: string;
+    status_label: string;
+    payment_status: string;
+    payment_status_label: string;
+    subtotal_formatted: string;
+    shipping_formatted: string;
+    total_formatted: string;
+    shipping_recipient_name: string;
+    shipping_phone: string;
+    shipping_address: string;
+    shipping_delivery_notes: string | null;
+    order_notes: string | null;
+    shipping_carrier: string | null;
+    tracking_number: string | null;
+    placed_at_diff: string;
+    paid_at_diff: string | null;
+    shipped_at_diff: string | null;
+    delivered_at_diff: string | null;
+    cancelled_at_diff: string | null;
+    refunded_at_diff: string | null;
+    allowed_transitions: SellerSelectOption[];
+    items: Array<{
+        id: number;
+        product_name: string;
+        variant_title: string | null;
+        sku: string;
+        quantity: number;
+        unit_price_formatted: string;
+        line_total_formatted: string;
+    }>;
+    status_history: Array<{
+        id: number;
+        to_status_label: string;
+        actor_name: string;
+        reason: string | null;
+        created_at_diff: string;
+    }>;
 }

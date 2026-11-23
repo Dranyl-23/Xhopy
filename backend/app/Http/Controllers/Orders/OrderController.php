@@ -8,6 +8,7 @@ use App\Domain\Orders\Enums\OrderStatus;
 use App\Domain\Orders\Models\Order;
 use App\Domain\Orders\Models\OrderItem;
 use App\Domain\Orders\Models\OrderStatusHistory;
+use App\Domain\Orders\Models\SellerOrder;
 use App\Domain\Payments\Actions\CreateCheckoutPaymentAction;
 use App\Http\Controllers\Controller;
 use App\Models\User;
@@ -29,7 +30,7 @@ class OrderController extends Controller
         }
 
         $orders = $user->orders()
-            ->withCount('items')
+            ->withCount(['items', 'sellerOrders'])
             ->orderByDesc('id')
             ->paginate(12)
             ->through(static fn (Order $order): array => [
@@ -40,6 +41,7 @@ class OrderController extends Controller
                 'payment_status' => $order->payment_status->value,
                 'payment_status_label' => $order->payment_status->label(),
                 'items_count' => (int) ($order->getAttribute('items_count') ?? 0),
+                'seller_orders_count' => (int) ($order->getAttribute('seller_orders_count') ?? 0),
                 'total_formatted' => MoneyFormatter::format($order->total_amount, $order->currency),
                 'placed_at_diff' => $order->placed_at->diffForHumans(),
             ]);
@@ -84,8 +86,46 @@ class OrderController extends Controller
     {
         Gate::authorize('view', $order);
 
-        $order->load(['items', 'statusHistory', 'latestPayment']);
+        $order->load(['items', 'sellerOrders.items', 'sellerOrders.store', 'statusHistory', 'latestPayment']);
         $latestPayment = $order->latestPayment;
+
+        $mapItem = static fn (OrderItem $item): array => [
+            'id' => $item->id,
+            'product_name' => $item->product_name,
+            'variant_title' => $item->variant_title,
+            'sku' => $item->sku,
+            'seller_name' => $item->seller_name,
+            'quantity' => $item->quantity,
+            'unit_price_formatted' => MoneyFormatter::format($item->unit_price, $item->currency),
+            'line_total_formatted' => MoneyFormatter::format($item->line_total, $item->currency),
+        ];
+
+        $sellerOrders = $order->sellerOrders->map(static function (SellerOrder $sellerOrder) use ($mapItem): array {
+            $store = $sellerOrder->store;
+
+            return [
+                'id' => $sellerOrder->id,
+                'seller_order_number' => $sellerOrder->seller_order_number,
+                'seller_name' => $sellerOrder->seller_name,
+                'store_slug' => $store->slug,
+                'store_url' => $store->isActive()
+                    ? route('stores.show', ['store' => $store->slug])
+                    : null,
+                'is_official_store' => $sellerOrder->is_official_store,
+                'status' => $sellerOrder->status->value,
+                'status_label' => $sellerOrder->status->label(),
+                'subtotal_formatted' => MoneyFormatter::format($sellerOrder->subtotal_amount, $sellerOrder->currency),
+                'shipping_formatted' => MoneyFormatter::format($sellerOrder->shipping_amount, $sellerOrder->currency),
+                'total_formatted' => MoneyFormatter::format($sellerOrder->total_amount, $sellerOrder->currency),
+                'shipping_carrier' => $sellerOrder->shipping_carrier,
+                'tracking_number' => $sellerOrder->tracking_number,
+                'shipped_at_diff' => $sellerOrder->shipped_at?->diffForHumans(),
+                'delivered_at_diff' => $sellerOrder->delivered_at?->diffForHumans(),
+                'cancelled_at_diff' => $sellerOrder->cancelled_at?->diffForHumans(),
+                'refunded_at_diff' => $sellerOrder->refunded_at?->diffForHumans(),
+                'items' => $sellerOrder->items->map($mapItem)->values()->all(),
+            ];
+        })->values()->all();
 
         return Inertia::render('orders/Show', [
             'order' => [
@@ -113,16 +153,8 @@ class OrderController extends Controller
                 'can_cancel' => Gate::allows('cancel', $order),
                 'can_retry_payment' => $order->status === OrderStatus::PendingPayment,
                 'payment_method_type' => $latestPayment?->payment_method_type,
-                'items' => $order->items->map(static fn (OrderItem $item): array => [
-                    'id' => $item->id,
-                    'product_name' => $item->product_name,
-                    'variant_title' => $item->variant_title,
-                    'sku' => $item->sku,
-                    'seller_name' => $item->seller_name,
-                    'quantity' => $item->quantity,
-                    'unit_price_formatted' => MoneyFormatter::format($item->unit_price, $item->currency),
-                    'line_total_formatted' => MoneyFormatter::format($item->line_total, $item->currency),
-                ])->values()->all(),
+                'seller_orders' => $sellerOrders,
+                'items' => $order->items->map($mapItem)->values()->all(),
                 'status_history' => $order->statusHistory->map(static fn (OrderStatusHistory $entry): array => [
                     'id' => $entry->id,
                     'to_status_label' => $entry->to_status->label(),
