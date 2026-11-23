@@ -11,6 +11,7 @@ import {
     ReceiptText,
     ShieldCheck,
     Store,
+    Wallet,
 } from '@lucide/vue';
 import {
     Alert,
@@ -27,6 +28,7 @@ import {
     CardTitle,
 } from '@shared/components/ui/card';
 import { onboarding as sellerOnboarding } from '@/routes/seller';
+import { index as sellerFinanceIndex } from '@/routes/seller/finance';
 import { index as sellerInventoryIndex } from '@/routes/seller/inventory';
 import { index as sellerOrdersIndex } from '@/routes/seller/orders';
 import {
@@ -105,6 +107,12 @@ defineProps<{
                     </Link>
                 </Button>
                 <Button as-child variant="outline" class="h-10 gap-1.5">
+                    <Link :href="sellerFinanceIndex()">
+                        <Wallet class="size-4" aria-hidden="true" />
+                        <span>Finance &amp; Payouts</span>
+                    </Link>
+                </Button>
+                <Button as-child variant="outline" class="h-10 gap-1.5">
                     <Link :href="sellerStoreEdit()">
                         <Store class="size-4" aria-hidden="true" />
                         <span>Store Profile</span>
@@ -144,7 +152,7 @@ defineProps<{
             </AlertDescription>
         </Alert>
 
-        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Card>
                 <CardHeader class="pb-2">
                     <CardDescription>Store Products</CardDescription>
@@ -239,6 +247,36 @@ defineProps<{
                     <span v-if="metrics.confirmed_revenue_formatted">
                         · {{ metrics.confirmed_revenue_formatted }} confirmed
                     </span>
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader class="pb-2">
+                    <CardDescription>Available Payout</CardDescription>
+                    <CardTitle
+                        class="flex items-center gap-2 text-2xl tabular-nums"
+                    >
+                        <Wallet
+                            class="size-5 text-primary"
+                            aria-hidden="true"
+                        />
+                        <span>{{
+                            metrics.available_balance_formatted ?? '₱0.00'
+                        }}</span>
+                    </CardTitle>
+                </CardHeader>
+                <CardContent class="text-xs text-muted-foreground">
+                    7-day hold:
+                    <strong class="text-foreground">{{
+                        metrics.on_hold_balance_formatted ?? '₱0.00'
+                    }}</strong>
+                    ·
+                    <Link
+                        :href="sellerFinanceIndex()"
+                        class="font-medium text-primary underline underline-offset-4"
+                    >
+                        View ledger
+                    </Link>
                 </CardContent>
             </Card>
         </div>

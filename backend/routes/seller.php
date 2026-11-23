@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Seller\DashboardController;
+use App\Http\Controllers\Seller\FinanceController;
 use App\Http\Controllers\Seller\InventoryController;
 use App\Http\Controllers\Seller\OnboardingController;
 use App\Http\Controllers\Seller\OrderController as SellerOrderController;
@@ -71,6 +72,11 @@ Route::middleware(['auth', 'verified'])
                 Route::patch('/{sellerOrder}/status', [SellerOrderController::class, 'updateStatus'])
                     ->whereNumber('sellerOrder')
                     ->name('status.update');
+            });
+
+            Route::prefix('finance')->name('finance.')->group(function (): void {
+                Route::get('/', [FinanceController::class, 'index'])->name('index');
+                Route::post('/payouts', [FinanceController::class, 'storePayout'])->name('payouts.store');
             });
         });
     });

@@ -2,6 +2,7 @@
 
 namespace App\Domain\Orders\Actions;
 
+use App\Domain\Finance\Services\SellerFinanceService;
 use App\Domain\Inventory\Services\InventoryReservationService;
 use App\Domain\Orders\Enums\OrderStatus;
 use App\Domain\Orders\Models\Order;
@@ -19,6 +20,7 @@ final class TransitionSellerOrderStatusAction
     public function __construct(
         private readonly InventoryReservationService $inventoryReservation,
         private readonly OrderStateRollup $stateRollup,
+        private readonly SellerFinanceService $financeService,
     ) {}
 
     public function execute(
@@ -94,12 +96,21 @@ final class TransitionSellerOrderStatusAction
 
             $lockedSuborder->forceFill($updates)->save();
 
+            if ($nextStatus === OrderStatus::Paid) {
+                $this->financeService->recordSuborderSettled($lockedSuborder, $actor);
+            }
+
             if ($currentStatus->releasesReservedStockWhenTransitionedTo($nextStatus)) {
                 $this->inventoryReservation->releaseForSellerOrder($lockedSuborder, $actor);
             }
 
             if ($nextStatus === OrderStatus::Delivered) {
                 $this->inventoryReservation->markFulfilledForSellerOrder($lockedSuborder, $actor);
+                $this->financeService->recordSuborderDelivered($lockedSuborder->refresh());
+            }
+
+            if (in_array($nextStatus, [OrderStatus::Cancelled, OrderStatus::Refunded], true)) {
+                $this->financeService->recordSuborderReversed($lockedSuborder, $actor, $reason);
             }
 
             $baseReason = $reason !== null && trim($reason) !== ''

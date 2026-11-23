@@ -5,6 +5,10 @@ namespace App\Domain\Admin\Services;
 use App\Domain\Catalog\Enums\ProductStatus;
 use App\Domain\Catalog\Models\Product;
 use App\Domain\Catalog\Services\MoneyFormatter;
+use App\Domain\Finance\Enums\PayoutStatus;
+use App\Domain\Finance\Models\CommissionEntry;
+use App\Domain\Finance\Models\SellerPayout;
+use App\Domain\Finance\Services\SellerFinanceService;
 use App\Domain\Orders\Enums\OrderStatus;
 use App\Domain\Orders\Models\Order;
 use App\Domain\Orders\Models\OrderItem;
@@ -132,10 +136,20 @@ final class AdminAnalyticsService
             ->values()
             ->all();
 
+        $commissionRevenueCentavos = (int) (CommissionEntry::query()
+            ->where('status', 'recorded')
+            ->sum('commission_centavos') ?: 0);
+
+        $pendingPayoutsCount = SellerPayout::query()
+            ->whereIn('status', [PayoutStatus::Pending->value, PayoutStatus::Approved->value])
+            ->count();
+
         return [
             'kpis' => [
                 'grossRevenueFormatted' => MoneyFormatter::format($confirmedRevenue, 'PHP'),
                 'avgOrderValueFormatted' => MoneyFormatter::format(number_format($avgOrderCentavos / 100, 2, '.', ''), 'PHP'),
+                'commissionRevenueFormatted' => SellerFinanceService::formatCentavos($commissionRevenueCentavos),
+                'pendingPayoutsCount' => $pendingPayoutsCount,
                 'totalOrders' => $totalOrders,
                 'confirmedOrdersCount' => $confirmedOrdersCount,
                 'pendingPaymentCount' => $pendingPaymentCount,

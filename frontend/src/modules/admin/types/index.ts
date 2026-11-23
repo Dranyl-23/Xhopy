@@ -183,6 +183,8 @@ export interface AdminAnalyticsSummary {
         cancelledOrRefundedCount: number;
         lowStockCount: number;
         outOfStockCount: number;
+        commissionRevenueFormatted?: string;
+        pendingPayoutsCount?: number;
     };
     dailyTrend: Array<{
         date: string;
@@ -425,4 +427,67 @@ export interface AdminSellerDetail {
         actor_name: string;
         created_at: string;
     }>;
+}
+
+export interface AdminCommissionRuleRow {
+    id: number;
+    store_id: number | null;
+    scope_label: string;
+    rate_percent: string;
+    rate_bps: number;
+    hold_days: number;
+    minimum_payout_formatted: string;
+    minimum_payout_amount: string;
+    is_active: boolean;
+    effective_from_diff: string;
+    creator_name: string;
+    notes: string | null;
+}
+
+export interface AdminPayoutQueueRow {
+    id: number;
+    payout_number: string;
+    store_name: string;
+    requester_name: string;
+    requester_email: string;
+    status: string;
+    status_label: string;
+    amount_formatted: string;
+    payout_method: string;
+    payout_destination: string;
+    request_notes: string | null;
+    review_notes: string | null;
+    external_reference: string | null;
+    reviewer_name: string | null;
+    requested_at_diff: string;
+    paid_at_diff: string | null;
+    allowed_transitions: AdminStatusOption[];
+}
+
+export interface AdminFinancePageProps {
+    kpis: {
+        gmvFormatted: string;
+        commissionRevenueFormatted: string;
+        sellerNetPayableFormatted: string;
+        reversedFormatted: string;
+        pendingPayoutFormatted: string;
+        pendingPayoutCount: number;
+        paidOutFormatted: string;
+    };
+    rules: AdminCommissionRuleRow[];
+    stores: Array<{
+        id: number;
+        name: string;
+    }>;
+    payouts: {
+        data: AdminPayoutQueueRow[];
+        current_page: number;
+        last_page: number;
+        per_page: number;
+        total: number;
+    };
+    payoutStatuses: AdminStatusOption[];
+    filters: {
+        status: string;
+    };
 }

@@ -86,6 +86,20 @@ defineOptions({
                     <strong class="text-foreground">{{
                         analytics.kpis.avgOrderValueFormatted
                     }}</strong>
+                    <span v-if="analytics.kpis.commissionRevenueFormatted">
+                        · Net commission:
+                        <strong class="text-foreground">{{
+                            analytics.kpis.commissionRevenueFormatted
+                        }}</strong>
+                    </span>
+                    <span
+                        v-if="analytics.kpis.pendingPayoutsCount !== undefined"
+                    >
+                        · Pending payouts:
+                        <strong class="text-foreground">{{
+                            analytics.kpis.pendingPayoutsCount
+                        }}</strong>
+                    </span>
                 </CardContent>
             </Card>
 

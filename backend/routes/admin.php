@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\BrandController;
 use App\Http\Controllers\Admin\CampaignContentController;
 use App\Http\Controllers\Admin\CatalogController as AdminCatalogController;
 use App\Http\Controllers\Admin\CategoryController;
+use App\Http\Controllers\Admin\FinanceController as AdminFinanceController;
 use App\Http\Controllers\Admin\InventoryController;
 use App\Http\Controllers\Admin\OperationsController;
 use App\Http\Controllers\Admin\OrderController as AdminOrderController;
@@ -105,4 +106,16 @@ Route::middleware(['auth', 'verified', 'can:review-sellers', EnsurePrivilegedMfa
         Route::get('/{sellerProfile}/documents/{document}', [AdminSellerController::class, 'downloadDocument'])
             ->whereNumber(['sellerProfile', 'document'])
             ->name('documents.download');
+    });
+
+Route::middleware(['auth', 'verified', 'can:manage-finance', EnsurePrivilegedMfa::class])
+    ->prefix('admin/finance')
+    ->name('admin.finance.')
+    ->group(function (): void {
+        Route::get('/', [AdminFinanceController::class, 'index'])->name('index');
+        Route::post('/commission-rules', [AdminFinanceController::class, 'storeCommissionRule'])
+            ->name('commission-rules.store');
+        Route::patch('/payouts/{payout}', [AdminFinanceController::class, 'updatePayout'])
+            ->whereNumber('payout')
+            ->name('payouts.update');
     });

@@ -9,6 +9,7 @@ import {
     ShieldCheck,
     Store,
     Users,
+    Wallet,
 } from '@lucide/vue';
 import { computed } from 'vue';
 import BrandLogo from '@shared/components/BrandLogo.vue';
@@ -26,6 +27,7 @@ import {
 } from '@shared/components/ui/sidebar';
 import { home } from '@/routes';
 import { index as adminCatalogIndex } from '@/routes/admin/catalog';
+import { index as adminFinanceIndex } from '@/routes/admin/finance';
 import { index as adminInventoryIndex } from '@/routes/admin/inventory';
 import { index as adminOperationsIndex } from '@/routes/admin/operations';
 import { index as adminOrdersIndex } from '@/routes/admin/orders';
@@ -107,11 +109,18 @@ const governanceNavItems = computed<NavItem[]>(() => {
     }
 
     if (auth?.canManageUsers) {
-        items.push({
-            title: 'Users & Roles',
-            href: adminUsersIndex(),
-            icon: Users,
-        });
+        items.push(
+            {
+                title: 'Finance & Payouts',
+                href: adminFinanceIndex(),
+                icon: Wallet,
+            },
+            {
+                title: 'Users & Roles',
+                href: adminUsersIndex(),
+                icon: Users,
+            },
+        );
     }
 
     items.push({

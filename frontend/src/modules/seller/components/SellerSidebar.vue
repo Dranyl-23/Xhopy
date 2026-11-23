@@ -9,6 +9,7 @@ import {
     Settings,
     ShieldCheck,
     Store,
+    Wallet,
 } from '@lucide/vue';
 import { computed } from 'vue';
 import BrandLogo from '@shared/components/BrandLogo.vue';
@@ -30,6 +31,7 @@ import {
     dashboard as sellerDashboard,
     onboarding as sellerOnboarding,
 } from '@/routes/seller';
+import { index as sellerFinanceIndex } from '@/routes/seller/finance';
 import { index as sellerInventoryIndex } from '@/routes/seller/inventory';
 import { index as sellerOrdersIndex } from '@/routes/seller/orders';
 import { index as sellerProductsIndex } from '@/routes/seller/products';
@@ -73,6 +75,11 @@ const storeNavItems = computed<NavItem[]>(() => {
                 title: 'Orders & Fulfillment',
                 href: sellerOrdersIndex(),
                 icon: ClipboardList,
+            },
+            {
+                title: 'Finance & Payouts',
+                href: sellerFinanceIndex(),
+                icon: Wallet,
             },
         );
     }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Seller;
 use App\Domain\Catalog\Enums\ProductStatus;
 use App\Domain\Catalog\Models\Product;
 use App\Domain\Catalog\Services\MoneyFormatter;
+use App\Domain\Finance\Services\SellerFinanceService;
 use App\Domain\Orders\Enums\OrderStatus;
 use App\Domain\Orders\Models\OrderItem;
 use App\Domain\Orders\Models\SellerOrder;
@@ -18,7 +19,7 @@ use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function __invoke(Request $request): Response
+    public function __invoke(Request $request, SellerFinanceService $financeService): Response
     {
         $user = $request->user();
         if (! $user instanceof User) {
@@ -75,6 +76,8 @@ class DashboardController extends Controller
             ])
             ->sum('total_amount') ?: '0.00');
 
+        $balances = $financeService->balancesForStore($store);
+
         return Inertia::render('seller/Dashboard', [
             'store' => [
                 'id' => $store->id,
@@ -106,6 +109,8 @@ class DashboardController extends Controller
                 'shipped_orders' => $shippedOrdersCount,
                 'delivered_orders' => $deliveredOrdersCount,
                 'confirmed_revenue_formatted' => MoneyFormatter::format($confirmedRevenue, 'PHP'),
+                'available_balance_formatted' => $balances['availableFormatted'],
+                'on_hold_balance_formatted' => $balances['onHoldFormatted'],
             ],
         ]);
     }

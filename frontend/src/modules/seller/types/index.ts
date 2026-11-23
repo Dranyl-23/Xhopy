@@ -83,6 +83,8 @@ export interface SellerDashboardMetrics {
     shipped_orders?: number;
     delivered_orders?: number;
     confirmed_revenue_formatted?: string;
+    available_balance_formatted?: string;
+    on_hold_balance_formatted?: string;
 }
 
 export interface SellerProductRow {
@@ -310,4 +312,80 @@ export interface SellerOrderDetail {
         reason: string | null;
         created_at_diff: string;
     }>;
+}
+
+export interface SellerFinanceBalances {
+    inFulfillmentCentavos: number;
+    inFulfillmentFormatted: string;
+    onHoldCentavos: number;
+    onHoldFormatted: string;
+    maturedCentavos: number;
+    maturedFormatted: string;
+    availableCentavos: number;
+    availableFormatted: string;
+    pendingPayoutCentavos: number;
+    pendingPayoutFormatted: string;
+    paidOutCentavos: number;
+    paidOutFormatted: string;
+    grossConfirmedCentavos: number;
+    grossConfirmedFormatted: string;
+    commissionChargedCentavos: number;
+    commissionChargedFormatted: string;
+    minimumPayoutCentavos: number;
+    minimumPayoutFormatted: string;
+    commissionRateBps: number;
+    commissionRatePercentFormatted: string;
+    holdDays: number;
+}
+
+export interface SellerPayoutRow {
+    id: number;
+    payout_number: string;
+    status: string;
+    status_label: string;
+    amount_formatted: string;
+    payout_method: string;
+    payout_destination: string;
+    external_reference: string | null;
+    review_notes: string | null;
+    requested_at_diff: string;
+    paid_at_diff: string | null;
+}
+
+export interface SellerLedgerEntryRow {
+    id: number;
+    entry_type: string;
+    entry_type_label: string;
+    amount_centavos: number;
+    amount_formatted: string;
+    description: string;
+    created_at_diff: string;
+}
+
+export interface SellerCommissionSnapshotRow {
+    id: number;
+    seller_order_id: number;
+    seller_order_number: string;
+    suborder_status_label: string;
+    gross_formatted: string;
+    rate_percent: string;
+    commission_formatted: string;
+    net_formatted: string;
+    status: string;
+    hold_until_label: string | null;
+    recorded_at_diff: string;
+}
+
+export interface SellerFinancePageProps {
+    store: {
+        id: number;
+        name: string;
+        slug: string;
+        is_official: boolean;
+        payout_notes_default: string;
+    };
+    balances: SellerFinanceBalances;
+    payouts: SellerPayoutRow[];
+    ledgerEntries: SellerLedgerEntryRow[];
+    commissionSnapshots: SellerCommissionSnapshotRow[];
 }

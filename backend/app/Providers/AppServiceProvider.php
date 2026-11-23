@@ -108,6 +108,10 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('manage-users', static function (User $user): bool {
             return $user->isSuperAdmin();
         });
+
+        Gate::define('manage-finance', static function (User $user): bool {
+            return $user->isSuperAdmin();
+        });
     }
 
     /**
